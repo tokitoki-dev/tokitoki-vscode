@@ -1,0 +1,187 @@
+{
+  "name": "tokitoki-vscode",
+  "displayName": "TokiToki",
+  "description": "VS Code integration for the local TokiToki usage sync agent.",
+  "version": "0.1.0",
+  "publisher": "tracklm",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "tokitoki",
+    "tracklm",
+    "usage",
+    "agent",
+    "analytics"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:tokitoki.syncNow",
+    "onCommand:tokitoki.setApiKey",
+    "onCommand:tokitoki.showApiKeyStatus",
+    "onCommand:tokitoki.service.install",
+    "onCommand:tokitoki.service.start",
+    "onCommand:tokitoki.service.stop",
+    "onCommand:tokitoki.service.restart",
+    "onCommand:tokitoki.service.status",
+    "onCommand:tokitoki.openOutput"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run build:agent && npm run compile",
+    "build:agent": "node scripts/build-agent-binaries.js",
+    "compile": "tsc -p ./",
+    "check": "tsc --noEmit -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && node --test out/test/**/*.test.js",
+    "package": "vsce package --no-dependencies --allow-missing-repository"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "tokitoki.syncNow",
+        "title": "TokiToki: Sync Now",
+        "category": "TokiToki",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "tokitoki.setApiKey",
+        "title": "TokiToki: Set API Key",
+        "category": "TokiToki",
+        "icon": "$(key)"
+      },
+      {
+        "command": "tokitoki.showApiKeyStatus",
+        "title": "TokiToki: Show API Key Status",
+        "category": "TokiToki",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "tokitoki.service.install",
+        "title": "TokiToki: Install Background Service",
+        "category": "TokiToki",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "tokitoki.service.start",
+        "title": "TokiToki: Start Background Service",
+        "category": "TokiToki",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "tokitoki.service.stop",
+        "title": "TokiToki: Stop Background Service",
+        "category": "TokiToki",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "tokitoki.service.restart",
+        "title": "TokiToki: Restart Background Service",
+        "category": "TokiToki",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "tokitoki.service.status",
+        "title": "TokiToki: Show Background Service Status",
+        "category": "TokiToki",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "tokitoki.openOutput",
+        "title": "TokiToki: Open Output Log",
+        "category": "TokiToki",
+        "icon": "$(output)"
+      }
+    ],
+    "configuration": {
+      "title": "TokiToki",
+      "properties": {
+        "tokitoki.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Enable the TokiToki VS Code integration."
+        },
+        "tokitoki.autoSync": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Run a sync when VS Code starts and then on an interval."
+        },
+        "tokitoki.syncOnSave": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "description": "Run a throttled sync after text documents are saved."
+        },
+        "tokitoki.syncIntervalMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "scope": "application",
+          "description": "Minutes between automatic syncs when auto sync is enabled."
+        },
+        "tokitoki.providerDirs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[^=]+=[\\s\\S]+$"
+          },
+          "default": [],
+          "scope": "application",
+          "description": "Optional provider directories passed as repeated --provider-dir provider=path arguments. Empty uses the CLI defaults."
+        },
+        "tokitoki.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:9093",
+          "scope": "application",
+          "description": "TOKITOKI_BASE_URL passed to the CLI."
+        },
+        "tokitoki.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Show the TokiToki status bar item."
+        },
+        "tokitoki.showNotifications": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Show VS Code notifications for command failures and manual command results."
+        },
+        "tokitoki.commandTimeoutSeconds": {
+          "type": "number",
+          "default": 140,
+          "minimum": 5,
+          "scope": "application",
+          "description": "Maximum seconds to wait for a single tokitoki CLI command."
+        },
+        "tokitoki.logLevel": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
+          "default": "info",
+          "scope": "application",
+          "description": "Minimum level written to the TokiToki output channel."
+        }
+      }
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.92.0",
+    "@vscode/vsce": "^3.6.1",
+    "typescript": "^5.9.3"
+  }
+}

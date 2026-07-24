@@ -1,8 +1,8 @@
 {
   "name": "tokitoki-vscode",
   "displayName": "TokiToki",
-  "description": "VS Code integration for the local TokiToki usage sync agent.",
-  "version": "0.1.0",
+  "description": "Coding time tracking and local AI usage sync for TokiToki.",
+  "version": "0.2.0",
   "publisher": "tracklm",
   "license": "MIT",
   "engines": {
@@ -14,24 +14,15 @@
   "keywords": [
     "tokitoki",
     "tracklm",
+    "time tracking",
     "usage",
-    "agent",
     "analytics"
   ],
   "extensionKind": [
     "workspace"
   ],
   "activationEvents": [
-    "onStartupFinished",
-    "onCommand:tokitoki.syncNow",
-    "onCommand:tokitoki.setApiKey",
-    "onCommand:tokitoki.showApiKeyStatus",
-    "onCommand:tokitoki.service.install",
-    "onCommand:tokitoki.service.start",
-    "onCommand:tokitoki.service.stop",
-    "onCommand:tokitoki.service.restart",
-    "onCommand:tokitoki.service.status",
-    "onCommand:tokitoki.openOutput"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "scripts": {
@@ -46,8 +37,14 @@
   "contributes": {
     "commands": [
       {
+        "command": "tokitoki.openDashboard",
+        "title": "TokiToki: Open Dashboard",
+        "category": "TokiToki",
+        "icon": "$(graph)"
+      },
+      {
         "command": "tokitoki.syncNow",
-        "title": "TokiToki: Sync Now",
+        "title": "TokiToki: Sync AI Usage Now",
         "category": "TokiToki",
         "icon": "$(sync)"
       },
@@ -64,36 +61,6 @@
         "icon": "$(shield)"
       },
       {
-        "command": "tokitoki.service.install",
-        "title": "TokiToki: Install Background Service",
-        "category": "TokiToki",
-        "icon": "$(cloud-upload)"
-      },
-      {
-        "command": "tokitoki.service.start",
-        "title": "TokiToki: Start Background Service",
-        "category": "TokiToki",
-        "icon": "$(debug-start)"
-      },
-      {
-        "command": "tokitoki.service.stop",
-        "title": "TokiToki: Stop Background Service",
-        "category": "TokiToki",
-        "icon": "$(debug-stop)"
-      },
-      {
-        "command": "tokitoki.service.restart",
-        "title": "TokiToki: Restart Background Service",
-        "category": "TokiToki",
-        "icon": "$(debug-restart)"
-      },
-      {
-        "command": "tokitoki.service.status",
-        "title": "TokiToki: Show Background Service Status",
-        "category": "TokiToki",
-        "icon": "$(pulse)"
-      },
-      {
         "command": "tokitoki.openOutput",
         "title": "TokiToki: Open Output Log",
         "category": "TokiToki",
@@ -107,26 +74,20 @@
           "type": "boolean",
           "default": true,
           "scope": "application",
-          "description": "Enable the TokiToki VS Code integration."
+          "description": "Enable coding time tracking and AI usage sync."
         },
         "tokitoki.autoSync": {
           "type": "boolean",
           "default": true,
           "scope": "application",
-          "description": "Run a sync when VS Code starts and then on an interval."
-        },
-        "tokitoki.syncOnSave": {
-          "type": "boolean",
-          "default": false,
-          "scope": "application",
-          "description": "Run a throttled sync after text documents are saved."
+          "description": "Scan and upload local AI usage when VS Code starts and then on an interval."
         },
         "tokitoki.syncIntervalMinutes": {
           "type": "number",
-          "default": 5,
+          "default": 30,
           "minimum": 1,
           "scope": "application",
-          "description": "Minutes between automatic syncs when auto sync is enabled."
+          "description": "Minutes between automatic AI usage syncs when auto sync is enabled."
         },
         "tokitoki.providerDirs": {
           "type": "array",
@@ -140,9 +101,9 @@
         },
         "tokitoki.baseUrl": {
           "type": "string",
-          "default": "http://localhost:9093",
+          "default": "",
           "scope": "application",
-          "description": "TOKITOKI_BASE_URL passed to the CLI."
+          "description": "Override TOKITOKI_BASE_URL for staging or self-hosted servers. Empty uses the CLI default (production)."
         },
         "tokitoki.statusBar.enabled": {
           "type": "boolean",

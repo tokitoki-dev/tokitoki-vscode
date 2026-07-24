@@ -1,5 +1,6 @@
 import { execFile, ExecFileException } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 import { ExtensionConfig } from './config';
@@ -8,6 +9,19 @@ import { normalizeProviderDir } from './pathUtils';
 export interface CommandResult {
   stdout: string;
   stderr: string;
+}
+
+export interface HeartbeatArgs {
+  entity: string;
+  timeSeconds: number;
+  project?: string;
+  projectFolder?: string;
+  plugin?: string;
+  category?: string;
+  isWrite?: boolean;
+  lineNumber?: number;
+  cursorPosition?: number;
+  linesInFile?: number;
 }
 
 export class TokitokiCliError extends Error {
@@ -24,6 +38,10 @@ export class TokitokiCliError extends Error {
     this.stdout = stdout;
     this.stderr = stderr;
   }
+
+  public get isMissingApiKey(): boolean {
+    return /api key/i.test(this.stderr);
+  }
 }
 
 export class TokitokiCli {
@@ -32,19 +50,117 @@ export class TokitokiCli {
     private readonly extensionPath: string,
   ) {}
 
+  /**
+   * The CLI shared by every TokiToki client on this machine. The location is
+   * a contract documented in tokitoki-cli/README.md: resolve it first and
+   * fall back to the bundled copy only when it is missing.
+   */
+  public static sharedBinaryPath(): string {
+    const name = process.platform === 'win32' ? 'tokitoki.exe' : 'tokitoki';
+    return path.join(os.homedir(), '.tokitoki', 'bin', name);
+  }
+
+  public bundledBinaryPath(): string {
+    return path.join(this.extensionPath, 'bin', bundledExecutableName());
+  }
+
   public resolveExecutable(): string {
-    const executable = path.join(this.extensionPath, 'bin', bundledExecutableName());
-    if (!fs.existsSync(executable)) {
-      throw new Error(`Bundled tokitoki CLI is missing: ${executable}`);
+    const shared = TokitokiCli.sharedBinaryPath();
+    if (isExecutable(shared)) {
+      return shared;
+    }
+    const bundled = this.bundledBinaryPath();
+    if (!fs.existsSync(bundled)) {
+      throw new Error(`Bundled tokitoki CLI is missing: ${bundled}`);
     }
     if (process.platform !== 'win32') {
-      fs.chmodSync(executable, 0o755);
+      fs.chmodSync(bundled, 0o755);
     }
-    return executable;
+    return bundled;
+  }
+
+  /**
+   * Seeds the shared CLI from the bundled copy when the shared one is missing
+   * or older, then lets `tokitoki update` keep it fresh. Never a downgrade:
+   * a bundled CLI older than the shared one leaves the shared one alone, and
+   * a bundled build that cannot report a version only fills a hole.
+   * The staged copy is renamed into place so no invocation ever sees a
+   * half-written binary.
+   */
+  public async bootstrapSharedCli(): Promise<void> {
+    const bundled = this.bundledBinaryPath();
+    if (!fs.existsSync(bundled)) {
+      return;
+    }
+    if (process.platform !== 'win32') {
+      fs.chmodSync(bundled, 0o755);
+    }
+
+    const shared = TokitokiCli.sharedBinaryPath();
+    if (isExecutable(shared)) {
+      const bundledVersion = await this.binaryVersion(bundled);
+      if (!bundledVersion) {
+        return;
+      }
+      const sharedVersion = await this.binaryVersion(shared);
+      if (sharedVersion && !lessThan(sharedVersion, bundledVersion)) {
+        return;
+      }
+      // Shared is older — or cannot even report a version, in which case a
+      // binary that works replaces one that does not.
+    }
+
+    fs.mkdirSync(path.dirname(shared), { recursive: true });
+    const staging = `${shared}.seed`;
+    fs.rmSync(staging, { force: true });
+    fs.copyFileSync(bundled, staging);
+    if (process.platform !== 'win32') {
+      fs.chmodSync(staging, 0o755);
+    }
+    fs.renameSync(staging, shared);
+  }
+
+  /** Asks the shared CLI to update itself. The CLI owns the whole sequence. */
+  public update(): Promise<CommandResult> {
+    return this.run(['update']);
   }
 
   public sync(): Promise<CommandResult> {
     return this.run(this.providerArgs());
+  }
+
+  public heartbeat(args: HeartbeatArgs): Promise<CommandResult> {
+    const command = [
+      'heartbeat',
+      '--entity', args.entity,
+      '--time', args.timeSeconds.toFixed(3),
+      '--editor', 'vscode',
+    ];
+    if (args.project) {
+      command.push('--project', args.project);
+    }
+    if (args.projectFolder) {
+      command.push('--project-folder', args.projectFolder);
+    }
+    if (args.plugin) {
+      command.push('--plugin', args.plugin);
+    }
+    if (args.category) {
+      command.push('--category', args.category);
+    }
+    if (args.isWrite) {
+      command.push('--write');
+    }
+    if (args.lineNumber && args.lineNumber > 0) {
+      command.push('--lineno', String(args.lineNumber));
+    }
+    if (args.cursorPosition && args.cursorPosition > 0) {
+      command.push('--cursorpos', String(args.cursorPosition));
+    }
+    if (args.linesInFile && args.linesInFile > 0) {
+      command.push('--lines-in-file', String(args.linesInFile));
+    }
+    return this.run(command);
   }
 
   public setApiKey(apiKey: string): Promise<CommandResult> {
@@ -55,21 +171,35 @@ export class TokitokiCli {
     return this.run(['get', 'key']);
   }
 
-  public service(action: 'install' | 'start' | 'stop' | 'restart' | 'status'): Promise<CommandResult> {
-    const args = ['service', action, ...this.providerArgs()];
-    if (action === 'install' || action === 'restart') {
-      args.push('--interval', `${this.config.syncIntervalMinutes}m`);
+  public async dashboardUrl(): Promise<string> {
+    const result = await this.run(['get', 'dashboard-url']);
+    return result.stdout.trim();
+  }
+
+  private async binaryVersion(executable: string): Promise<number[] | undefined> {
+    try {
+      const result = await this.runBinary(executable, ['version']);
+      const parts = result.stdout.trim().replace(/^v/, '').split('.');
+      if (parts.length !== 3) {
+        return undefined;
+      }
+      const components = parts.map((part) => Number.parseInt(part, 10));
+      return components.some(Number.isNaN) ? undefined : components;
+    } catch {
+      return undefined;
     }
-    return this.run(args);
   }
 
   private run(args: string[]): Promise<CommandResult> {
-    const executable = this.resolveExecutable();
+    return this.runBinary(this.resolveExecutable(), args);
+  }
+
+  private runBinary(executable: string, args: string[]): Promise<CommandResult> {
     const command = [executable, ...args].join(' ');
-    const env = {
-      ...process.env,
-      TOKITOKI_BASE_URL: this.config.baseUrl || process.env.TOKITOKI_BASE_URL || 'http://localhost:9093',
-    };
+    const env = { ...process.env };
+    if (this.config.baseUrl) {
+      env.TOKITOKI_BASE_URL = this.config.baseUrl;
+    }
 
     return new Promise((resolve, reject) => {
       execFile(
@@ -138,5 +268,25 @@ export function bundledExecutableName(
       return 'tokitoki-windows-arm64.exe';
     default:
       throw new Error(`Unsupported TokiToki CLI platform: ${target}`);
+  }
+}
+
+export function lessThan(a: number[], b: number[]): boolean {
+  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+    const left = a[i] ?? 0;
+    const right = b[i] ?? 0;
+    if (left !== right) {
+      return left < right;
+    }
+  }
+  return false;
+}
+
+function isExecutable(filePath: string): boolean {
+  try {
+    fs.accessSync(filePath, process.platform === 'win32' ? fs.constants.F_OK : fs.constants.X_OK);
+    return true;
+  } catch {
+    return false;
   }
 }

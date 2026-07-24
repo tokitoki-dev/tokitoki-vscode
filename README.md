@@ -1,37 +1,52 @@
 # TokiToki VS Code
 
-VS Code integration for the local TokiToki usage sync agent.
+Coding time tracking and local AI usage sync for TokiToki.
 
-This extension shells out to a bundled `tokitoki` CLI built from
-`tracklm-goagent`. The runtime path is fixed:
+The extension watches editor activity and sends heartbeats
+through the `tokitoki` CLI: one per two minutes per file, with file switches,
+category changes, and saves passing immediately. The CLI queues events in the
+shared local database, so offline work uploads later. It also scans local AI
+client data (Claude Code, Codex, ...) on an interval, same as the macOS menu
+bar app.
+
+## The shared CLI
+
+Every TokiToki client on a machine invokes one shared CLI:
 
 ```text
-${extensionPath}/bin/tokitoki-${platform}-${arch}
+~/.tokitoki/bin/tokitoki            macOS, Linux
+%USERPROFILE%\.tokitoki\bin\tokitoki.exe   Windows
 ```
 
-The extension does not search workspace folders or `PATH` at runtime. Packaging
-runs `npm run build:agent`, which cross-compiles the CLI into `bin/`.
+The extension resolves the shared binary first and falls back to its bundled
+copy (`${extensionPath}/bin/tokitoki-${platform}-${arch}`). On activation it
+seeds the shared location when the shared binary is missing or reports an
+older release version — staged and renamed into place, never a downgrade —
+then asks the CLI to update itself at most once a day. Packaging runs
+`npm run build:agent`, which cross-compiles the CLI from `tokitoki-cli`;
+an exact release tag stamps the version, otherwise the build reports `dev`
+and only ever fills an empty shared slot.
 
 ## Commands
 
-- `TokiToki: Sync Now` runs `tokitoki` once.
+- `TokiToki: Open Dashboard` opens the web dashboard, signed in when possible.
+- `TokiToki: Sync AI Usage Now` runs one AI usage scan and upload.
 - `TokiToki: Set API Key` runs `tokitoki set key <API_KEY>`.
-- `TokiToki: Show API Key Status` runs `tokitoki get key` and displays a masked key.
-- `TokiToki: Install/Start/Stop/Restart/Show Background Service` maps to
-  `tokitoki service ...`.
+- `TokiToki: Show API Key Status` displays a masked key.
 - `TokiToki: Open Output Log` opens the extension output channel.
 
-The status bar item runs `TokiToki: Sync Now` when clicked.
+The status bar item opens the dashboard when clicked.
 
 ## Settings
 
-- `tokitoki.enabled`: enable or disable the extension integration.
-- `tokitoki.autoSync`: run on startup and on an interval.
-- `tokitoki.syncOnSave`: run a throttled sync after document saves.
-- `tokitoki.syncIntervalMinutes`: automatic sync interval.
+- `tokitoki.enabled`: enable coding time tracking and AI usage sync.
+- `tokitoki.autoSync`: scan AI usage on startup and on an interval.
+- `tokitoki.syncIntervalMinutes`: automatic AI usage sync interval.
 - `tokitoki.providerDirs`: optional repeated `provider=path` values passed as
   `--provider-dir`. Empty uses CLI defaults.
-- `tokitoki.baseUrl`: value for `TOKITOKI_BASE_URL`.
+- `tokitoki.baseUrl`: server override for staging; empty uses the CLI default.
+- `tokitoki.statusBar.enabled`: show the status bar item.
+- `tokitoki.showNotifications`: notifications for failures and manual commands.
 - `tokitoki.commandTimeoutSeconds`: timeout for one CLI command.
 - `tokitoki.logLevel`: output channel verbosity.
 
@@ -44,5 +59,3 @@ npm run check
 npm test
 npm run package
 ```
-
-The VSIX is emitted as `tokitoki-vscode-0.1.0.vsix`.

@@ -4,7 +4,7 @@ const path = require('path');
 
 const extensionRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(extensionRoot, '..');
-const goagentDir = path.join(repoRoot, 'tracklm-goagent');
+const cliDir = path.join(repoRoot, 'tokitoki-cli');
 const outputDir = path.join(extensionRoot, 'bin');
 
 const targets = [
@@ -16,9 +16,31 @@ const targets = [
   ['windows', 'arm64', 'tokitoki-windows-arm64.exe'],
 ];
 
-if (!fs.existsSync(path.join(goagentDir, 'go.mod'))) {
-  throw new Error(`Unable to find tracklm-goagent at ${goagentDir}`);
+if (!fs.existsSync(path.join(cliDir, 'go.mod'))) {
+  throw new Error(`Unable to find tokitoki-cli at ${cliDir}`);
 }
+
+// Only an exact release tag stamps a version. Anything else stays "dev", so a
+// bundled build of work in progress can seed the shared CLI into an empty
+// slot but never replaces a released one.
+function releaseVersion() {
+  const result = childProcess.spawnSync('git', ['describe', '--tags', '--exact-match'], {
+    cwd: cliDir,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    return undefined;
+  }
+  const tag = result.stdout.trim();
+  return /^v\d+\.\d+\.\d+$/.test(tag) ? tag.slice(1) : undefined;
+}
+
+const version = releaseVersion();
+let ldflags = '-s -w';
+if (version) {
+  ldflags += ` -X github.com/tokitoki-dev/tokitoki-cli/internal/buildinfo.Version=${version}`;
+}
+console.log(`Building tokitoki CLI ${version ?? 'dev'}`);
 
 fs.mkdirSync(outputDir, { recursive: true });
 
@@ -27,9 +49,9 @@ for (const [goos, goarch, filename] of targets) {
   console.log(`Building ${filename}`);
   const result = childProcess.spawnSync(
     'go',
-    ['build', '-trimpath', '-ldflags=-s -w', '-o', output, './cmd/tokitoki'],
+    ['build', '-trimpath', `-ldflags=${ldflags}`, '-o', output, './cmd/tokitoki'],
     {
-      cwd: goagentDir,
+      cwd: cliDir,
       env: {
         ...process.env,
         CGO_ENABLED: '0',

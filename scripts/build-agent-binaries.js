@@ -5,7 +5,7 @@ const path = require('path');
 const extensionRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(extensionRoot, '..');
 const cliDir = path.join(repoRoot, 'tokitoki-cli');
-const outputDir = path.join(extensionRoot, 'bin');
+const outputDir = path.join(extensionRoot, '.build', 'cli');
 
 const targets = [
   ['darwin', 'amd64', 'tokitoki-darwin-amd64'],

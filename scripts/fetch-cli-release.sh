@@ -1,6 +1,7 @@
 #!/bin/sh
 
-# Downloads the pinned tokitoki-cli release for every platform into bin/,
+# Downloads the pinned tokitoki-cli release for every platform into
+# .build/cli/,
 # verifying each SHA-256 against the reviewed pins. CI and release builds use
 # this; local development can cross-compile from source instead with
 # `npm run build:agent`.
@@ -12,7 +13,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 . "$SCRIPT_DIR/cli-release-pins.sh"
 
-OUT_DIR="$PROJECT_DIR/bin"
+OUT_DIR="$PROJECT_DIR/.build/cli"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/tokitoki-cli-release.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 

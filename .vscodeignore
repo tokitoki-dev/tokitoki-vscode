@@ -11,3 +11,4 @@ node_modules/**
 DEVELOPMENT.md
 Makefile
 .github/**
+.build/**

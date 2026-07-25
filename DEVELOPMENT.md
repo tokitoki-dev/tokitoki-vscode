@@ -37,11 +37,17 @@ then asks the CLI to update itself at most once a day.
 
 ```sh
 npm install
-make            # package the VSIX (fetches the pinned CLI if bin/ is empty)
-make install    # package and install into local VS Code
-make test       # compile and run unit tests
-make build-cli  # cross-compile the CLI from ../tokitoki-cli source instead
+make              # platform VSIX for this machine (fetches the pinned CLI)
+make install      # package and install into local VS Code
+make package-all  # all six platform VSIXes, as the release workflow builds
+make test         # compile and run unit tests
+make build-cli    # cross-compile the CLI from ../tokitoki-cli source instead
 ```
+
+Every VSIX is platform-specific (`vsce --target`): it bundles exactly the
+one CLI binary its platform needs, and the Marketplace serves each user the
+matching package. `.build/cli/` holds all six binaries; `bin/` is the
+per-target staging area.
 
 The server URL is baked in at compile time by
 `scripts/generate-server-url.js`: unset builds talk to production, and

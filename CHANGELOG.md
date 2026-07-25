@@ -8,6 +8,8 @@
 - `Tokitoki: Set API Key` pre-fills the configured key, masked, so you can
   see one exists before replacing it.
 - Automatic AI usage syncs stay silent until an API key is configured.
+- Platform-specific packages: each VSIX bundles only its own platform's
+  CLI binary, cutting the download from 28 MB to about 5 MB.
 - The command palette keeps four commands: Set API Key, Open Dashboard,
   Show API Key Status, and a new Toggle Tracking. Manual sync and the
   log command are gone — syncs are automatic and the log stays

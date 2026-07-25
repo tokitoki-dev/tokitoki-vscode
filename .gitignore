@@ -31,3 +31,4 @@ pnpm-debug.log*
 
 # Generated at build time
 src/serverUrl.ts
+.build/

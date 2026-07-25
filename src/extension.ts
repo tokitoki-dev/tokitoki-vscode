@@ -60,10 +60,21 @@ class TokiTokiExtension implements vscode.Disposable {
     } catch (error) {
       this.logger.warn(`Failed to seed shared CLI: ${error instanceof Error ? error.message : String(error)}`);
     }
+    void this.promptForApiKeyIfMissing();
     if (this.config.autoSync) {
       void this.syncNow(false);
     }
     void this.updateSharedCliDaily();
+  }
+
+  /** On activation: a configured key stays silent, a missing one opens the
+   * input box straight away. */
+  private async promptForApiKeyIfMissing(): Promise<void> {
+    try {
+      await this.createCli().getApiKey();
+    } catch {
+      await this.promptForApiKeyOnce();
+    }
   }
 
   public async syncNow(userInitiated: boolean): Promise<void> {
@@ -78,6 +89,16 @@ class TokiTokiExtension implements vscode.Disposable {
         await vscode.window.showInformationMessage('TokiToki sync is already running.');
       }
       return;
+    }
+
+    // Automatic syncs stay silent until a key exists — the activation prompt
+    // already asks for one. Same rule as the macOS app's automatic sync.
+    if (!userInitiated) {
+      try {
+        await this.createCli().getApiKey();
+      } catch {
+        return;
+      }
     }
 
     this.syncRunning = true;
@@ -100,13 +121,23 @@ class TokiTokiExtension implements vscode.Disposable {
   }
 
   public async setApiKey(): Promise<void> {
+    // Pre-fill the configured key; password masking renders it as dots, so
+    // the user sees that a key exists without the key itself being shown.
+    let existing = '';
+    try {
+      existing = (await this.createCli().getApiKey()).stdout.trim();
+    } catch {
+      // No key configured yet.
+    }
     const apiKey = await vscode.window.showInputBox({
       prompt: 'TokiToki API key',
+      placeHolder: 'Paste your API key from tokitoki.dev',
+      value: existing,
       password: true,
       ignoreFocusOut: true,
       validateInput: (value) => (value.trim() ? undefined : 'API key is required'),
     });
-    if (!apiKey) {
+    if (!apiKey || apiKey.trim() === existing) {
       return;
     }
 
@@ -205,14 +236,7 @@ class TokiTokiExtension implements vscode.Disposable {
     }
     this.promptedForApiKey = true;
     this.updateStatus('$(warning) TokiToki', 'TokiToki API key is not configured', true);
-    const setKey = 'Set API Key';
-    const selected = await vscode.window.showWarningMessage(
-      'TokiToki needs an API key to record your coding activity.',
-      setKey,
-    );
-    if (selected === setKey) {
-      await this.setApiKey();
-    }
+    await this.setApiKey();
   }
 
   private async updateSharedCliDaily(): Promise<void> {

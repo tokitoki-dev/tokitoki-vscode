@@ -1,9 +1,9 @@
 {
   "name": "tokitoki-vscode",
-  "displayName": "TokiToki",
+  "displayName": "Tokitoki",
   "description": "Automatic coding time tracking plus AI usage analytics for Claude Code, Codex, Copilot, and more \u2014 on your TokiToki dashboard.",
   "version": "0.1.0",
-  "publisher": "tracklm",
+  "publisher": "tokitoki",
   "license": "MIT",
   "engines": {
     "vscode": "^1.92.0"

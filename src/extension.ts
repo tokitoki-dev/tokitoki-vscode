@@ -48,6 +48,7 @@ class TokitokiExtension implements vscode.Disposable {
 
   public async initialize(): Promise<void> {
     this.logger.info(`Tokitoki extension activated from ${this.context.extensionPath}`);
+    this.logger.info(`Server: ${this.config.baseUrl}`);
     this.reloadConfig();
     if (!this.config.enabled) {
       return;

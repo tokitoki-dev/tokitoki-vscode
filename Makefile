@@ -25,11 +25,13 @@ endif
 .PHONY: package package-all install test check fetch-cli build-cli clean
 
 package: fetch-cli
+	@echo "==> Packaging for server: $${TOKITOKI_BASE_URL:-https://tokitoki.dev (production)}"
 	scripts/stage-cli.sh $(HOST_TARGET)
 	npx vsce package --no-dependencies --allow-missing-repository \
 	  --target $(HOST_TARGET) -o tokitoki-vscode-$(HOST_TARGET)-$(VERSION).vsix
 
 package-all: fetch-cli
+	@echo "==> Packaging for server: $${TOKITOKI_BASE_URL:-https://tokitoki.dev (production)}"
 	for t in $(TARGETS); do \
 	  scripts/stage-cli.sh $$t && \
 	  npx vsce package --no-dependencies --allow-missing-repository \

@@ -7,6 +7,8 @@ import { maskApiKey, TokitokiCli, TokitokiCliError } from './tokitokiCli';
 
 const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const LAST_UPDATE_CHECK_KEY = 'tokitoki.lastUpdateCheckAt';
+/** Matches the macOS menu bar app's automatic sync cadence. */
+const SYNC_INTERVAL_MS = 30 * 60 * 1000;
 
 class TokiTokiExtension implements vscode.Disposable {
   private config: ExtensionConfig = readConfig();
@@ -249,7 +251,7 @@ class TokiTokiExtension implements vscode.Disposable {
     }
     this.syncTimer = setInterval(() => {
       void this.syncNow(false);
-    }, this.config.syncIntervalMinutes * 60_000);
+    }, SYNC_INTERVAL_MS);
   }
 
   private createCli(): TokitokiCli {

@@ -82,23 +82,6 @@
           "scope": "application",
           "description": "Scan and upload local AI usage when VS Code starts and then on an interval."
         },
-        "tokitoki.syncIntervalMinutes": {
-          "type": "number",
-          "default": 30,
-          "minimum": 1,
-          "scope": "application",
-          "description": "Minutes between automatic AI usage syncs when auto sync is enabled."
-        },
-        "tokitoki.providerDirs": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^[^=]+=[\\s\\S]+$"
-          },
-          "default": [],
-          "scope": "application",
-          "description": "Optional provider directories passed as repeated --provider-dir provider=path arguments. Empty uses the CLI defaults."
-        },
         "tokitoki.baseUrl": {
           "type": "string",
           "default": "",

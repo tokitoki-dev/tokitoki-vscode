@@ -4,7 +4,6 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { ExtensionConfig } from './config';
-import { normalizeProviderDir } from './pathUtils';
 
 export interface CommandResult {
   stdout: string;
@@ -125,8 +124,9 @@ export class TokitokiCli {
     return this.run(['update']);
   }
 
+  /** One AI usage scan-and-upload run over the CLI's default provider dirs. */
   public sync(): Promise<CommandResult> {
-    return this.run(this.providerArgs());
+    return this.run([]);
   }
 
   public heartbeat(args: HeartbeatArgs): Promise<CommandResult> {
@@ -228,16 +228,6 @@ export class TokitokiCli {
     });
   }
 
-  private providerArgs(): string[] {
-    const args: string[] = [];
-    for (const value of this.config.providerDirs) {
-      const normalized = normalizeProviderDir(value);
-      if (normalized) {
-        args.push('--provider-dir', normalized);
-      }
-    }
-    return args;
-  }
 }
 
 export function maskApiKey(apiKey: string): string {

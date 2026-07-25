@@ -16,11 +16,12 @@ gh api --method PUT "repos/$REPO/branches/main/protection" \
   --input - <<'JSON'
 {
   "required_status_checks": {
-    "strict": false,
+    "strict": true,
     "contexts": ["build", "merge-source"]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": {
+    "dismiss_stale_reviews": true,
     "required_approving_review_count": 0
   },
   "restrictions": null,

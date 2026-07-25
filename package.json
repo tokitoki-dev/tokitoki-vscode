@@ -88,7 +88,7 @@
           "type": "string",
           "default": "",
           "scope": "application",
-          "description": "Override TOKITOKI_BASE_URL for staging or self-hosted servers. Empty uses the CLI default (production)."
+          "description": "Server override for staging or self-hosted deployments. Empty uses the server fixed at build time (https://tokitoki.dev)."
         },
         "tokitoki.statusBar.enabled": {
           "type": "boolean",

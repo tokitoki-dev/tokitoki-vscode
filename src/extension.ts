@@ -179,7 +179,7 @@ class TokitokiExtension implements vscode.Disposable {
     } catch (error) {
       this.logger.debug(`Dashboard URL unavailable: ${error instanceof Error ? error.message : String(error)}`);
     }
-    await vscode.env.openExternal(vscode.Uri.parse(this.config.baseUrl || 'https://tokitoki.dev'));
+    await vscode.env.openExternal(vscode.Uri.parse(this.config.baseUrl));
   }
 
   public openOutput(): void {

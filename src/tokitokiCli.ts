@@ -196,10 +196,9 @@ export class TokitokiCli {
 
   private runBinary(executable: string, args: string[]): Promise<CommandResult> {
     const command = [executable, ...args].join(' ');
-    const env = { ...process.env };
-    if (this.config.baseUrl) {
-      env.TOKITOKI_BASE_URL = this.config.baseUrl;
-    }
+    // Always pass the resolved server URL so the CLI's behavior is decided
+    // by this build, never by whatever environment the editor inherited.
+    const env = { ...process.env, TOKITOKI_BASE_URL: this.config.baseUrl };
 
     return new Promise((resolve, reject) => {
       execFile(

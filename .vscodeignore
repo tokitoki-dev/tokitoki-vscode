@@ -10,3 +10,4 @@ node_modules/**
 .gitignore
 DEVELOPMENT.md
 Makefile
+.github/**

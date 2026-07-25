@@ -171,6 +171,19 @@ export class TokitokiCli {
     return this.run(['get', 'key']);
   }
 
+  /** Checks the stored key against the server. Returns the CLI's definite
+   * answer, or undefined when this CLI predates `verify key` or the check
+   * itself could not run (offline, server trouble). */
+  public async verifyApiKey(): Promise<boolean | undefined> {
+    try {
+      const result = await this.run(['verify', 'key']);
+      const parsed = JSON.parse(result.stdout) as { ok?: boolean; valid?: boolean };
+      return parsed.ok ? parsed.valid === true : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   public async dashboardUrl(): Promise<string> {
     const result = await this.run(['get', 'dashboard-url']);
     return result.stdout.trim();

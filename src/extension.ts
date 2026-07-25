@@ -155,13 +155,32 @@ class TokitokiExtension implements vscode.Disposable {
   }
 
   public async showApiKeyStatus(): Promise<void> {
+    let masked: string;
     try {
       const result = await this.createCli().getApiKey();
       this.logCommandOutput('', result.stderr);
-      const masked = maskApiKey(result.stdout);
-      await vscode.window.showInformationMessage(`Tokitoki API key is configured (${masked}).`);
+      masked = maskApiKey(result.stdout);
     } catch (error) {
       await this.handleCommandError(error, 'Tokitoki API key is not configured.', true);
+      return;
+    }
+
+    const valid = await this.createCli().verifyApiKey();
+    if (valid === true) {
+      await vscode.window.showInformationMessage(`Tokitoki API key is valid (${masked}).`);
+    } else if (valid === false) {
+      const setKey = 'Set API Key';
+      const selected = await vscode.window.showWarningMessage(
+        `Tokitoki API key (${masked}) was rejected by the server. Set a new one?`,
+        setKey,
+      );
+      if (selected === setKey) {
+        await this.setApiKey();
+      }
+    } else {
+      await vscode.window.showInformationMessage(
+        `Tokitoki API key is configured (${masked}); the server could not be reached to verify it.`,
+      );
     }
   }
 

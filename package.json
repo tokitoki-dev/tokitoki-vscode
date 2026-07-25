@@ -2,7 +2,7 @@
   "name": "tokitoki-vscode",
   "displayName": "TokiToki",
   "description": "Coding time tracking and local AI usage sync for TokiToki.",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "publisher": "tracklm",
   "license": "MIT",
   "engines": {

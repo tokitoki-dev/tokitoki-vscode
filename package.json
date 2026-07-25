@@ -1,7 +1,7 @@
 {
   "name": "tokitoki-vscode",
   "displayName": "TokiToki",
-  "description": "Coding time tracking and local AI usage sync for TokiToki.",
+  "description": "Automatic coding time tracking plus AI usage analytics for Claude Code, Codex, Copilot, and more \u2014 on your TokiToki dashboard.",
   "version": "0.1.0",
   "publisher": "tracklm",
   "license": "MIT",
@@ -9,14 +9,15 @@
     "vscode": "^1.92.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Visualization"
   ],
   "keywords": [
-    "tokitoki",
-    "tracklm",
     "time tracking",
-    "usage",
-    "analytics"
+    "productivity",
+    "analytics",
+    "metrics",
+    "ai"
   ],
   "extensionKind": [
     "workspace"
@@ -128,5 +129,19 @@
     "@types/vscode": "^1.92.0",
     "@vscode/vsce": "^3.6.1",
     "typescript": "^5.9.3"
-  }
+  },
+  "icon": "images/icon.png",
+  "homepage": "https://tokitoki.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tokitoki-dev/tokitoki-vscode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tokitoki-dev/tokitoki-vscode/issues"
+  },
+  "galleryBanner": {
+    "color": "#18181B",
+    "theme": "dark"
+  },
+  "pricing": "Free"
 }

@@ -9,8 +9,7 @@
   see one exists before replacing it.
 - Automatic AI usage syncs stay silent until an API key is configured.
 - `Show API Key Status` now verifies the key against the server through
-  the CLI: valid, rejected (with a shortcut to set a new key), or
-  configured-but-unverifiable when offline.
+  the CLI: valid, or rejected with a shortcut to set a new key.
 - Platform-specific packages: each VSIX bundles only its own platform's
   CLI binary, cutting the download from 28 MB to about 5 MB.
 - The command palette keeps four commands: Set API Key, Open Dashboard,

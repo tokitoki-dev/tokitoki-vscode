@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@6044e13b5df428fefb6f3ab55f9d1cdd7f2b2c73 # v6.0.0
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Fetch pinned CLI release
+        run: scripts/fetch-cli-release.sh
+
+      - run: npm run check
+
+      - run: npm test
+
+      - name: Package VSIX (smoke)
+        run: npx vsce package --no-dependencies --allow-missing-repository
+
+      - name: Verify the VSIX bundles every CLI platform
+        run: |
+          vsix="$(ls tokitoki-vscode-*.vsix)"
+          for asset in \
+            bin/tokitoki-darwin-amd64 \
+            bin/tokitoki-darwin-arm64 \
+            bin/tokitoki-linux-amd64 \
+            bin/tokitoki-linux-arm64 \
+            bin/tokitoki-windows-amd64.exe \
+            bin/tokitoki-windows-arm64.exe; do
+            if ! unzip -l "$vsix" "extension/$asset" | grep -q "extension/$asset"; then
+              echo "Missing $asset in $vsix" >&2
+              exit 1
+            fi
+          done

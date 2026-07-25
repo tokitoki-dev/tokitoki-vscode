@@ -1,0 +1,23 @@
+name: Guard
+
+# main only accepts merges from dev. Combined with branch protection that
+# requires this check, any pull request from another branch cannot merge.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  merge-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only dev may merge into main
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_REF" != "dev" ]; then
+            echo "main only accepts merges from dev, got '$HEAD_REF'" >&2
+            exit 1
+          fi

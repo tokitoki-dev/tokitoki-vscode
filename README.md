@@ -51,8 +51,14 @@ The status bar item opens the dashboard when clicked.
 
 ```sh
 npm install
-npm run build:agent
+npm run fetch:agent   # pinned CLI release (what CI bundles), or:
+npm run build:agent   # cross-compile from ../tokitoki-cli source
 npm run check
 npm test
 npm run package
 ```
+
+CI and releases bundle the CLI release pinned in
+`scripts/cli-release-pins.sh`; releases are cut by pushing a `vX.Y.Z` tag on
+`main`, which must match `package.json`. `main` only accepts merges from
+`dev`.

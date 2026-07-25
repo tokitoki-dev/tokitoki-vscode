@@ -2,7 +2,7 @@
   "name": "tokitoki-vscode",
   "displayName": "Tokitoki",
   "description": "Automatic coding time tracking plus AI usage analytics for Claude Code, Codex, Copilot, and more \u2014 on your TokiToki dashboard.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "tokitoki",
   "license": "MIT",
   "engines": {
@@ -40,31 +40,31 @@
     "commands": [
       {
         "command": "tokitoki.openDashboard",
-        "title": "TokiToki: Open Dashboard",
+        "title": "Open Dashboard",
         "category": "TokiToki",
         "icon": "$(graph)"
       },
       {
         "command": "tokitoki.syncNow",
-        "title": "TokiToki: Sync AI Usage Now",
+        "title": "Sync AI Usage Now",
         "category": "TokiToki",
         "icon": "$(sync)"
       },
       {
         "command": "tokitoki.setApiKey",
-        "title": "TokiToki: Set API Key",
+        "title": "Set API Key",
         "category": "TokiToki",
         "icon": "$(key)"
       },
       {
         "command": "tokitoki.showApiKeyStatus",
-        "title": "TokiToki: Show API Key Status",
+        "title": "Show API Key Status",
         "category": "TokiToki",
         "icon": "$(shield)"
       },
       {
         "command": "tokitoki.openOutput",
-        "title": "TokiToki: Open Output Log",
+        "title": "Open Output Log",
         "category": "TokiToki",
         "icon": "$(output)"
       }

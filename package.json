@@ -56,23 +56,11 @@
         "title": "Show API Key Status",
         "category": "Tokitoki",
         "icon": "$(shield)"
-      },
-      {
-        "command": "tokitoki.toggle",
-        "title": "Toggle Tracking",
-        "category": "Tokitoki",
-        "icon": "$(circle-slash)"
       }
     ],
     "configuration": {
       "title": "Tokitoki",
       "properties": {
-        "tokitoki.enabled": {
-          "type": "boolean",
-          "default": true,
-          "scope": "application",
-          "description": "Enable coding time tracking and AI usage sync."
-        },
         "tokitoki.autoSync": {
           "type": "boolean",
           "default": true,

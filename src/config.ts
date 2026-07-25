@@ -5,7 +5,6 @@ import { TOKITOKI_BASE_URL } from './serverUrl';
 export type LogLevelName = 'debug' | 'info' | 'warn' | 'error';
 
 export interface ExtensionConfig {
-  enabled: boolean;
   autoSync: boolean;
   baseUrl: string;
   statusBarEnabled: boolean;
@@ -20,7 +19,6 @@ export function readConfig(): ExtensionConfig {
   const logLevel = config.get<LogLevelName>('logLevel', 'info');
 
   return {
-    enabled: config.get<boolean>('enabled', true),
     autoSync: config.get<boolean>('autoSync', true),
     // The server is fixed at compile time (scripts/generate-server-url.js);
     // the tokitoki.baseUrl setting is the only runtime override. Ambient

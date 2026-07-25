@@ -50,9 +50,6 @@ class TokitokiExtension implements vscode.Disposable {
     this.logger.info(`Tokitoki extension activated from ${this.context.extensionPath}`);
     this.logger.info(`Server: ${this.config.baseUrl}`);
     this.reloadConfig();
-    if (!this.config.enabled) {
-      return;
-    }
 
     // Seed the shared CLI before the first invocation so everything binds to
     // the shared copy, then let the CLI update itself — silent, at most daily.
@@ -78,11 +75,11 @@ class TokitokiExtension implements vscode.Disposable {
     }
   }
 
-  /** One automatic AI usage sync. Silent while disabled, already running, or
-   * missing a key — the activation prompt already asks for one. Same rules
-   * as the macOS app's automatic sync. */
+  /** One automatic AI usage sync. Silent while already running or missing a
+   * key — the activation prompt already asks for one. Same rules as the
+   * macOS app's automatic sync. */
   private async syncNow(): Promise<void> {
-    if (!this.config.enabled || this.syncRunning) {
+    if (this.syncRunning) {
       return;
     }
     try {
@@ -105,18 +102,6 @@ class TokitokiExtension implements vscode.Disposable {
     } finally {
       this.syncRunning = false;
     }
-  }
-
-  /** Flips tokitoki.enabled in the user settings; the configuration change
-   * listener applies it, so this behaves exactly like editing the setting. */
-  public async toggle(): Promise<void> {
-    const enabled = !this.config.enabled;
-    await vscode.workspace
-      .getConfiguration('tokitoki')
-      .update('enabled', enabled, vscode.ConfigurationTarget.Global);
-    await vscode.window.showInformationMessage(
-      enabled ? 'Tokitoki tracking enabled.' : 'Tokitoki tracking disabled.',
-    );
   }
 
   public async setApiKey(): Promise<void> {
@@ -215,9 +200,6 @@ class TokitokiExtension implements vscode.Disposable {
   }
 
   private sendHeartbeat(heartbeat: TrackedHeartbeat): void {
-    if (!this.config.enabled) {
-      return;
-    }
     // Serialize sends so a slow upload never piles up parallel CLI processes;
     // the CLI queues events locally either way, so order is not correctness.
     this.heartbeatChain = this.heartbeatChain.then(async () => {
@@ -275,11 +257,7 @@ class TokitokiExtension implements vscode.Disposable {
     this.logger.setLevel(this.config.logLevel);
     this.updateReadyStatus();
     this.restartSyncTimer();
-    if (this.config.enabled) {
-      this.tracker.start();
-    } else {
-      this.tracker.stop();
-    }
+    this.tracker.start();
   }
 
   private restartSyncTimer(): void {
@@ -287,7 +265,7 @@ class TokitokiExtension implements vscode.Disposable {
       clearInterval(this.syncTimer);
       this.syncTimer = undefined;
     }
-    if (!this.config.enabled || !this.config.autoSync) {
+    if (!this.config.autoSync) {
       return;
     }
     this.syncTimer = setInterval(() => {
@@ -335,10 +313,6 @@ class TokitokiExtension implements vscode.Disposable {
   }
 
   private updateReadyStatus(): void {
-    if (!this.config.enabled) {
-      this.updateStatus('$(circle-slash) Tokitoki', 'Tokitoki is disabled');
-      return;
-    }
     const parts = ['Tokitoki: tracking coding activity. Click to open your dashboard.'];
     if (this.lastHeartbeatAt) {
       parts.push(`Last heartbeat: ${this.lastHeartbeatAt.toLocaleString()}.`);
@@ -374,7 +348,6 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('tokitoki.openDashboard', () => controller?.openDashboard()),
     vscode.commands.registerCommand('tokitoki.setApiKey', () => controller?.setApiKey()),
     vscode.commands.registerCommand('tokitoki.showApiKeyStatus', () => controller?.showApiKeyStatus()),
-    vscode.commands.registerCommand('tokitoki.toggle', () => controller?.toggle()),
   );
 
   void controller.initialize();

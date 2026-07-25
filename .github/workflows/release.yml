@@ -83,3 +83,13 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes
+
+      - name: Publish to VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "VSCE_PAT repository secret is not configured" >&2
+            exit 1
+          fi
+          npx vsce publish --no-dependencies --packagePath tokitoki-vscode-*.vsix

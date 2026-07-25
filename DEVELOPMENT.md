@@ -1,6 +1,6 @@
 # Development
 
-The extension watches editor activity and reports heartbeats
+The extension watches editor activity and reports activity heartbeats
 through the `tokitoki` CLI, which owns the API key, the offline queue, and the
 upload. It also runs a periodic AI usage scan over the CLI's default provider
 directories, mirroring the macOS menu bar app.

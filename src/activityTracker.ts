@@ -18,7 +18,7 @@ const ALLOWED_SCHEMES = ['file', 'vscode-remote'];
 const DEBOUNCE_MS = 50;
 
 /**
- * Watches editor activity and emits throttled heartbeats.
+ * Watches editor activity and emits throttled activity heartbeats.
  * Bursty events (typing, selection) coalesce through a short debounce; the
  * throttler then lets one through per interval unless the file, category, or
  * write flag forces it.

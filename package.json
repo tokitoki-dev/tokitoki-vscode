@@ -30,11 +30,12 @@
     "vscode:prepublish": "npm run compile",
     "build:agent": "node scripts/build-agent-binaries.js",
     "fetch:agent": "sh scripts/fetch-cli-release.sh",
-    "compile": "tsc -p ./",
-    "check": "tsc --noEmit -p ./",
+    "compile": "npm run generate && tsc -p ./",
+    "check": "npm run generate && tsc --noEmit -p ./",
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node --test \"out/test/*.test.js\"",
-    "package": "vsce package --no-dependencies --allow-missing-repository"
+    "package": "vsce package --no-dependencies --allow-missing-repository",
+    "generate": "node scripts/generate-server-url.js"
   },
   "contributes": {
     "commands": [

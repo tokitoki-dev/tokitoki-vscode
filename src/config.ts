@@ -1,13 +1,8 @@
 import * as vscode from 'vscode';
 
-export type LogLevelName = 'debug' | 'info' | 'warn' | 'error';
+import { TOKITOKI_BASE_URL } from './serverUrl';
 
-/** The server this build talks to, fixed at compile time — the same rule as
- * the macOS app's AppConfig. The tokitoki.baseUrl setting is the only
- * runtime override; ambient TOKITOKI_BASE_URL in the editor's environment is
- * deliberately ignored because the extension passes its resolved URL to
- * every CLI invocation explicitly. */
-export const DEFAULT_SERVER_URL = 'https://tokitoki.dev';
+export type LogLevelName = 'debug' | 'info' | 'warn' | 'error';
 
 export interface ExtensionConfig {
   enabled: boolean;
@@ -27,7 +22,11 @@ export function readConfig(): ExtensionConfig {
   return {
     enabled: config.get<boolean>('enabled', true),
     autoSync: config.get<boolean>('autoSync', true),
-    baseUrl: config.get<string>('baseUrl', '').trim() || DEFAULT_SERVER_URL,
+    // The server is fixed at compile time (scripts/generate-server-url.js);
+    // the tokitoki.baseUrl setting is the only runtime override. Ambient
+    // environment variables never decide the server: the extension passes
+    // its resolved URL to every CLI invocation explicitly.
+    baseUrl: config.get<string>('baseUrl', '').trim() || TOKITOKI_BASE_URL,
     statusBarEnabled: config.get<boolean>('statusBar.enabled', true),
     showNotifications: config.get<boolean>('showNotifications', true),
     commandTimeoutSeconds: Math.max(5, Number(commandTimeoutSeconds) || 140),

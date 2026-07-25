@@ -37,12 +37,16 @@ then asks the CLI to update itself at most once a day.
 
 ```sh
 npm install
-npm run fetch:agent   # pinned CLI release (what CI bundles), or:
-npm run build:agent   # cross-compile from ../tokitoki-cli source
-npm run check
-npm test
-npm run package
+make            # package the VSIX (fetches the pinned CLI if bin/ is empty)
+make install    # package and install into local VS Code
+make test       # compile and run unit tests
+make build-cli  # cross-compile the CLI from ../tokitoki-cli source instead
 ```
+
+The server URL is baked in at compile time by
+`scripts/generate-server-url.js`: unset builds talk to production, and
+`TOKITOKI_BASE_URL=http://localhost:9093 make` produces a test-server
+package. At runtime only the `tokitoki.baseUrl` setting overrides it.
 
 CI and releases bundle the CLI release pinned in
 `scripts/cli-release-pins.sh`; releases are cut by pushing a `vX.Y.Z` tag on

@@ -1,7 +1,7 @@
 {
   "name": "tokitoki-vscode",
   "displayName": "Tokitoki",
-  "description": "Automatic coding time tracking plus AI usage analytics for Claude Code, Codex, Copilot, and more \u2014 on your TokiToki dashboard.",
+  "description": "Automatic coding time tracking plus AI usage analytics for Claude Code, Codex, Copilot, and more \u2014 on your Tokitoki dashboard.",
   "version": "0.1.1",
   "publisher": "tokitoki",
   "license": "MIT",
@@ -30,47 +30,42 @@
     "vscode:prepublish": "npm run compile",
     "build:agent": "node scripts/build-agent-binaries.js",
     "fetch:agent": "sh scripts/fetch-cli-release.sh",
-    "compile": "tsc -p ./",
-    "check": "tsc --noEmit -p ./",
+    "compile": "npm run generate && tsc -p ./",
+    "check": "npm run generate && tsc --noEmit -p ./",
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node --test \"out/test/*.test.js\"",
-    "package": "vsce package --no-dependencies --allow-missing-repository"
+    "package": "vsce package --no-dependencies --allow-missing-repository",
+    "generate": "node scripts/generate-server-url.js"
   },
   "contributes": {
     "commands": [
       {
-        "command": "tokitoki.openDashboard",
-        "title": "Open Dashboard",
-        "category": "TokiToki",
-        "icon": "$(graph)"
-      },
-      {
-        "command": "tokitoki.syncNow",
-        "title": "Sync AI Usage Now",
-        "category": "TokiToki",
-        "icon": "$(sync)"
-      },
-      {
         "command": "tokitoki.setApiKey",
         "title": "Set API Key",
-        "category": "TokiToki",
+        "category": "Tokitoki",
         "icon": "$(key)"
+      },
+      {
+        "command": "tokitoki.openDashboard",
+        "title": "Open Dashboard",
+        "category": "Tokitoki",
+        "icon": "$(graph)"
       },
       {
         "command": "tokitoki.showApiKeyStatus",
         "title": "Show API Key Status",
-        "category": "TokiToki",
+        "category": "Tokitoki",
         "icon": "$(shield)"
       },
       {
-        "command": "tokitoki.openOutput",
-        "title": "Open Output Log",
-        "category": "TokiToki",
-        "icon": "$(output)"
+        "command": "tokitoki.toggle",
+        "title": "Toggle Tracking",
+        "category": "Tokitoki",
+        "icon": "$(circle-slash)"
       }
     ],
     "configuration": {
-      "title": "TokiToki",
+      "title": "Tokitoki",
       "properties": {
         "tokitoki.enabled": {
           "type": "boolean",
@@ -88,13 +83,13 @@
           "type": "string",
           "default": "",
           "scope": "application",
-          "description": "Override TOKITOKI_BASE_URL for staging or self-hosted servers. Empty uses the CLI default (production)."
+          "description": "Server override for staging or self-hosted deployments. Empty uses the server fixed at build time (https://tokitoki.dev)."
         },
         "tokitoki.statusBar.enabled": {
           "type": "boolean",
           "default": true,
           "scope": "application",
-          "description": "Show the TokiToki status bar item."
+          "description": "Show the Tokitoki status bar item."
         },
         "tokitoki.showNotifications": {
           "type": "boolean",
@@ -119,7 +114,7 @@
           ],
           "default": "info",
           "scope": "application",
-          "description": "Minimum level written to the TokiToki output channel."
+          "description": "Minimum level written to the Tokitoki output channel."
         }
       }
     }

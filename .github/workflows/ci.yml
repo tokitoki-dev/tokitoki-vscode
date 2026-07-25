@@ -33,21 +33,19 @@ jobs:
 
       - run: npm test
 
-      - name: Package VSIX (smoke)
-        run: npx vsce package --no-dependencies --allow-missing-repository
-
-      - name: Verify the VSIX bundles every CLI platform
+      - name: Package platform VSIX (smoke)
         run: |
-          vsix="$(ls tokitoki-vscode-*.vsix)"
-          for asset in \
-            bin/tokitoki-darwin-amd64 \
-            bin/tokitoki-darwin-arm64 \
-            bin/tokitoki-linux-amd64 \
-            bin/tokitoki-linux-arm64 \
-            bin/tokitoki-windows-amd64.exe \
-            bin/tokitoki-windows-arm64.exe; do
-            if ! unzip -l "$vsix" "extension/$asset" | grep -q "extension/$asset"; then
-              echo "Missing $asset in $vsix" >&2
-              exit 1
-            fi
-          done
+          scripts/stage-cli.sh linux-x64
+          npx vsce package --no-dependencies --allow-missing-repository \
+            --target linux-x64 -o tokitoki-vscode-linux-x64.vsix
+
+      - name: Verify the VSIX bundles exactly one CLI binary
+        run: |
+          vsix=tokitoki-vscode-linux-x64.vsix
+          unzip -l "$vsix" | grep -q "extension/bin/tokitoki-linux-amd64" || {
+            echo "Missing linux-amd64 CLI in $vsix" >&2; exit 1; }
+          count="$(unzip -l "$vsix" | grep -c "extension/bin/tokitoki-" || true)"
+          if [ "$count" != "1" ]; then
+            echo "Expected exactly one bundled CLI, found $count" >&2
+            exit 1
+          fi

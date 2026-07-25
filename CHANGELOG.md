@@ -2,12 +2,20 @@
 
 ## 0.1.1
 
-- Command palette entries no longer repeat the TokiToki prefix.
+- Command palette entries no longer repeat the Tokitoki prefix.
 - A missing API key opens the input box right after activation; a
   configured key stays silent.
-- `TokiToki: Set API Key` pre-fills the configured key, masked, so you can
+- `Tokitoki: Set API Key` pre-fills the configured key, masked, so you can
   see one exists before replacing it.
 - Automatic AI usage syncs stay silent until an API key is configured.
+- `Show API Key Status` now verifies the key against the server through
+  the CLI: valid, or rejected with a shortcut to set a new key.
+- Platform-specific packages: each VSIX bundles only its own platform's
+  CLI binary, cutting the download from 28 MB to about 5 MB.
+- The command palette keeps four commands: Set API Key, Open Dashboard,
+  Show API Key Status, and a new Toggle Tracking. Manual sync and the
+  log command are gone — syncs are automatic and the log stays
+  reachable from error notifications and the Output panel.
 
 ## 0.1.0
 
@@ -20,5 +28,5 @@ First release.
   provider directories.
 - Shared CLI contract: resolve `~/.tokitoki/bin/tokitoki` first, seed it from
   the bundled copy when missing or older, and run `tokitoki update` daily.
-- `TokiToki: Open Dashboard` command with signed-in dashboard URLs.
+- `Tokitoki: Open Dashboard` command with signed-in dashboard URLs.
 - Prompt to set the API key when heartbeats report it missing.

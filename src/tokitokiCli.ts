@@ -50,7 +50,7 @@ export class TokitokiCli {
   ) {}
 
   /**
-   * The CLI shared by every TokiToki client on this machine. The location is
+   * The CLI shared by every Tokitoki client on this machine. The location is
    * a contract documented in tokitoki-cli/README.md: resolve it first and
    * fall back to the bundled copy only when it is missing.
    */
@@ -171,6 +171,14 @@ export class TokitokiCli {
     return this.run(['get', 'key']);
   }
 
+  /** Checks the stored key against the server; true is valid, false is
+   * rejected. A check that cannot run (offline, server trouble) throws. */
+  public async verifyApiKey(): Promise<boolean> {
+    const result = await this.run(['verify', 'key']);
+    const parsed = JSON.parse(result.stdout) as { valid?: boolean };
+    return parsed.valid === true;
+  }
+
   public async dashboardUrl(): Promise<string> {
     const result = await this.run(['get', 'dashboard-url']);
     return result.stdout.trim();
@@ -196,10 +204,9 @@ export class TokitokiCli {
 
   private runBinary(executable: string, args: string[]): Promise<CommandResult> {
     const command = [executable, ...args].join(' ');
-    const env = { ...process.env };
-    if (this.config.baseUrl) {
-      env.TOKITOKI_BASE_URL = this.config.baseUrl;
-    }
+    // Always pass the resolved server URL so the CLI's behavior is decided
+    // by this build, never by whatever environment the editor inherited.
+    const env = { ...process.env, TOKITOKI_BASE_URL: this.config.baseUrl };
 
     return new Promise((resolve, reject) => {
       execFile(
@@ -257,7 +264,7 @@ export function bundledExecutableName(
     case 'win32-arm64':
       return 'tokitoki-windows-arm64.exe';
     default:
-      throw new Error(`Unsupported TokiToki CLI platform: ${target}`);
+      throw new Error(`Unsupported Tokitoki CLI platform: ${target}`);
   }
 }
 

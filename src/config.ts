@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { TOKITOKI_BASE_URL } from './serverUrl';
+
 export type LogLevelName = 'debug' | 'info' | 'warn' | 'error';
 
 export interface ExtensionConfig {
@@ -20,7 +22,11 @@ export function readConfig(): ExtensionConfig {
   return {
     enabled: config.get<boolean>('enabled', true),
     autoSync: config.get<boolean>('autoSync', true),
-    baseUrl: config.get<string>('baseUrl', '').trim(),
+    // The server is fixed at compile time (scripts/generate-server-url.js);
+    // the tokitoki.baseUrl setting is the only runtime override. Ambient
+    // environment variables never decide the server: the extension passes
+    // its resolved URL to every CLI invocation explicitly.
+    baseUrl: config.get<string>('baseUrl', '').trim() || TOKITOKI_BASE_URL,
     statusBarEnabled: config.get<boolean>('statusBar.enabled', true),
     showNotifications: config.get<boolean>('showNotifications', true),
     commandTimeoutSeconds: Math.max(5, Number(commandTimeoutSeconds) || 140),

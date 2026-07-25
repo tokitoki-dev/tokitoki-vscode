@@ -72,8 +72,14 @@ jobs:
       - name: Fetch pinned CLI release
         run: scripts/fetch-cli-release.sh
 
-      - name: Package VSIX
-        run: npx vsce package --no-dependencies --allow-missing-repository
+      - name: Package platform VSIXes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          for t in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64 win32-arm64; do
+            scripts/stage-cli.sh "$t"
+            npx vsce package --no-dependencies --allow-missing-repository \
+              --target "$t" -o "tokitoki-vscode-$t-$version.vsix"
+          done
 
       - name: Publish GitHub release
         env:

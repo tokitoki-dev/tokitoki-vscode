@@ -40,22 +40,16 @@
   "contributes": {
     "commands": [
       {
-        "command": "tokitoki.openDashboard",
-        "title": "Open Dashboard",
-        "category": "Tokitoki",
-        "icon": "$(graph)"
-      },
-      {
-        "command": "tokitoki.syncNow",
-        "title": "Sync AI Usage Now",
-        "category": "Tokitoki",
-        "icon": "$(sync)"
-      },
-      {
         "command": "tokitoki.setApiKey",
         "title": "Set API Key",
         "category": "Tokitoki",
         "icon": "$(key)"
+      },
+      {
+        "command": "tokitoki.openDashboard",
+        "title": "Open Dashboard",
+        "category": "Tokitoki",
+        "icon": "$(graph)"
       },
       {
         "command": "tokitoki.showApiKeyStatus",
@@ -64,10 +58,10 @@
         "icon": "$(shield)"
       },
       {
-        "command": "tokitoki.openOutput",
-        "title": "Open Output Log",
+        "command": "tokitoki.toggle",
+        "title": "Toggle Tracking",
         "category": "Tokitoki",
-        "icon": "$(output)"
+        "icon": "$(circle-slash)"
       }
     ],
     "configuration": {

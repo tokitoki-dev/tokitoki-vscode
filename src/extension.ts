@@ -62,7 +62,7 @@ class TokitokiExtension implements vscode.Disposable {
     }
     void this.promptForApiKeyIfMissing();
     if (this.config.autoSync) {
-      void this.syncNow(false);
+      void this.syncNow();
     }
     void this.updateSharedCliDaily();
   }
@@ -77,28 +77,17 @@ class TokitokiExtension implements vscode.Disposable {
     }
   }
 
-  public async syncNow(userInitiated: boolean): Promise<void> {
-    if (!this.config.enabled) {
-      if (userInitiated) {
-        await vscode.window.showInformationMessage('Tokitoki is disabled in settings.');
-      }
+  /** One automatic AI usage sync. Silent while disabled, already running, or
+   * missing a key — the activation prompt already asks for one. Same rules
+   * as the macOS app's automatic sync. */
+  private async syncNow(): Promise<void> {
+    if (!this.config.enabled || this.syncRunning) {
       return;
     }
-    if (this.syncRunning) {
-      if (userInitiated) {
-        await vscode.window.showInformationMessage('Tokitoki sync is already running.');
-      }
+    try {
+      await this.createCli().getApiKey();
+    } catch {
       return;
-    }
-
-    // Automatic syncs stay silent until a key exists — the activation prompt
-    // already asks for one. Same rule as the macOS app's automatic sync.
-    if (!userInitiated) {
-      try {
-        await this.createCli().getApiKey();
-      } catch {
-        return;
-      }
     }
 
     this.syncRunning = true;
@@ -110,14 +99,23 @@ class TokitokiExtension implements vscode.Disposable {
       this.logCommandOutput(result.stdout, result.stderr);
       this.lastSyncAt = new Date();
       this.updateReadyStatus();
-      if (userInitiated && this.config.showNotifications) {
-        await vscode.window.showInformationMessage('Tokitoki sync completed.');
-      }
     } catch (error) {
-      await this.handleCommandError(error, 'Tokitoki sync failed.', userInitiated);
+      await this.handleCommandError(error, 'Tokitoki sync failed.', false);
     } finally {
       this.syncRunning = false;
     }
+  }
+
+  /** Flips tokitoki.enabled in the user settings; the configuration change
+   * listener applies it, so this behaves exactly like editing the setting. */
+  public async toggle(): Promise<void> {
+    const enabled = !this.config.enabled;
+    await vscode.workspace
+      .getConfiguration('tokitoki')
+      .update('enabled', enabled, vscode.ConfigurationTarget.Global);
+    await vscode.window.showInformationMessage(
+      enabled ? 'Tokitoki tracking enabled.' : 'Tokitoki tracking disabled.',
+    );
   }
 
   public async setApiKey(): Promise<void> {
@@ -149,7 +147,7 @@ class TokitokiExtension implements vscode.Disposable {
         await vscode.window.showInformationMessage('Tokitoki API key saved.');
       }
       if (this.config.autoSync) {
-        void this.syncNow(false);
+        void this.syncNow();
       }
     } catch (error) {
       await this.handleCommandError(error, 'Unable to save Tokitoki API key.', true);
@@ -180,10 +178,6 @@ class TokitokiExtension implements vscode.Disposable {
       this.logger.debug(`Dashboard URL unavailable: ${error instanceof Error ? error.message : String(error)}`);
     }
     await vscode.env.openExternal(vscode.Uri.parse(this.config.baseUrl));
-  }
-
-  public openOutput(): void {
-    this.logger.show();
   }
 
   public dispose(): void {
@@ -274,7 +268,7 @@ class TokitokiExtension implements vscode.Disposable {
       return;
     }
     this.syncTimer = setInterval(() => {
-      void this.syncNow(false);
+      void this.syncNow();
     }, SYNC_INTERVAL_MS);
   }
 
@@ -355,10 +349,9 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     controller,
     vscode.commands.registerCommand('tokitoki.openDashboard', () => controller?.openDashboard()),
-    vscode.commands.registerCommand('tokitoki.syncNow', () => controller?.syncNow(true)),
     vscode.commands.registerCommand('tokitoki.setApiKey', () => controller?.setApiKey()),
     vscode.commands.registerCommand('tokitoki.showApiKeyStatus', () => controller?.showApiKeyStatus()),
-    vscode.commands.registerCommand('tokitoki.openOutput', () => controller?.openOutput()),
+    vscode.commands.registerCommand('tokitoki.toggle', () => controller?.toggle()),
   );
 
   void controller.initialize();

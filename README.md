@@ -36,11 +36,10 @@ into one dashboard at [tokitoki.dev](https://tokitoki.dev).
 
 | Command | What it does |
 | --- | --- |
-| `Tokitoki: Open Dashboard` | Opens your web dashboard, signed in |
 | `Tokitoki: Set API Key` | Stores your API key for every Tokitoki client |
+| `Tokitoki: Open Dashboard` | Opens your web dashboard, signed in |
 | `Tokitoki: Show API Key Status` | Shows the configured key, masked |
-| `Tokitoki: Sync AI Usage Now` | Runs one AI usage scan immediately |
-| `Tokitoki: Open Output Log` | Opens the extension log |
+| `Tokitoki: Toggle Tracking` | Enables or disables Tokitoki |
 
 ## Settings
 

@@ -40,10 +40,7 @@ The status bar item opens the dashboard when clicked.
 ## Settings
 
 - `tokitoki.enabled`: enable coding time tracking and AI usage sync.
-- `tokitoki.autoSync`: scan AI usage on startup and on an interval.
-- `tokitoki.syncIntervalMinutes`: automatic AI usage sync interval.
-- `tokitoki.providerDirs`: optional repeated `provider=path` values passed as
-  `--provider-dir`. Empty uses CLI defaults.
+- `tokitoki.autoSync`: scan AI usage on startup and every 30 minutes.
 - `tokitoki.baseUrl`: server override for staging; empty uses the CLI default.
 - `tokitoki.statusBar.enabled`: show the status bar item.
 - `tokitoki.showNotifications`: notifications for failures and manual commands.

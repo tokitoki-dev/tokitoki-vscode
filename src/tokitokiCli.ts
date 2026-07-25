@@ -50,7 +50,7 @@ export class TokitokiCli {
   ) {}
 
   /**
-   * The CLI shared by every TokiToki client on this machine. The location is
+   * The CLI shared by every Tokitoki client on this machine. The location is
    * a contract documented in tokitoki-cli/README.md: resolve it first and
    * fall back to the bundled copy only when it is missing.
    */
@@ -257,7 +257,7 @@ export function bundledExecutableName(
     case 'win32-arm64':
       return 'tokitoki-windows-arm64.exe';
     default:
-      throw new Error(`Unsupported TokiToki CLI platform: ${target}`);
+      throw new Error(`Unsupported Tokitoki CLI platform: ${target}`);
   }
 }
 

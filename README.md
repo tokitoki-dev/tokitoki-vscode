@@ -1,14 +1,14 @@
-# TokiToki — Coding Time & AI Usage Analytics
+# Tokitoki — Coding Time & AI Usage Analytics
 
 **Know where your time and your AI spend actually go.**
 
-TokiToki automatically tracks your coding activity in VS Code and syncs your
+Tokitoki automatically tracks your coding activity in VS Code and syncs your
 local AI agent usage — Claude Code, Codex, Copilot, Gemini, and a dozen more —
 into one dashboard at [tokitoki.dev](https://tokitoki.dev).
 
 ## Features
 
-- **Automatic time tracking** — just code. TokiToki records which files,
+- **Automatic time tracking** — just code. Tokitoki records which files,
   projects, and languages you work in, including debugging and build time.
   No timers to start, no forms to fill.
 - **AI usage analytics** — your local AI coding agents (Claude Code, Codex,
@@ -26,7 +26,7 @@ into one dashboard at [tokitoki.dev](https://tokitoki.dev).
 ## Quick Start
 
 1. Install the extension.
-2. Run **TokiToki: Set API Key** from the command palette and paste the key
+2. Run **Tokitoki: Set API Key** from the command palette and paste the key
    from [tokitoki.dev](https://tokitoki.dev) — the extension will also prompt
    you on first use.
 3. That's it. Click the status bar clock anytime to open your dashboard,
@@ -36,11 +36,11 @@ into one dashboard at [tokitoki.dev](https://tokitoki.dev).
 
 | Command | What it does |
 | --- | --- |
-| `TokiToki: Open Dashboard` | Opens your web dashboard, signed in |
-| `TokiToki: Set API Key` | Stores your API key for every TokiToki client |
-| `TokiToki: Show API Key Status` | Shows the configured key, masked |
-| `TokiToki: Sync AI Usage Now` | Runs one AI usage scan immediately |
-| `TokiToki: Open Output Log` | Opens the extension log |
+| `Tokitoki: Open Dashboard` | Opens your web dashboard, signed in |
+| `Tokitoki: Set API Key` | Stores your API key for every Tokitoki client |
+| `Tokitoki: Show API Key Status` | Shows the configured key, masked |
+| `Tokitoki: Sync AI Usage Now` | Runs one AI usage scan immediately |
+| `Tokitoki: Open Output Log` | Opens the extension log |
 
 ## Settings
 
@@ -59,7 +59,7 @@ second line overrides the branch.
 
 ## Privacy
 
-TokiToki records activity metadata only: file paths, project and branch
+Tokitoki records activity metadata only: file paths, project and branch
 names, language, timestamps, and cursor position — **never your code**. AI
 usage sync reads token counts and model names from your local agent data.
 Everything is queued in `~/.tokitoki` and uploaded over HTTPS with your API

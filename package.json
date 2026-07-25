@@ -1,7 +1,7 @@
 {
   "name": "tokitoki-vscode",
   "displayName": "Tokitoki",
-  "description": "Automatic coding time tracking plus AI usage analytics for Claude Code, Codex, Copilot, and more \u2014 on your TokiToki dashboard.",
+  "description": "Automatic coding time tracking plus AI usage analytics for Claude Code, Codex, Copilot, and more \u2014 on your Tokitoki dashboard.",
   "version": "0.1.1",
   "publisher": "tokitoki",
   "license": "MIT",
@@ -41,36 +41,36 @@
       {
         "command": "tokitoki.openDashboard",
         "title": "Open Dashboard",
-        "category": "TokiToki",
+        "category": "Tokitoki",
         "icon": "$(graph)"
       },
       {
         "command": "tokitoki.syncNow",
         "title": "Sync AI Usage Now",
-        "category": "TokiToki",
+        "category": "Tokitoki",
         "icon": "$(sync)"
       },
       {
         "command": "tokitoki.setApiKey",
         "title": "Set API Key",
-        "category": "TokiToki",
+        "category": "Tokitoki",
         "icon": "$(key)"
       },
       {
         "command": "tokitoki.showApiKeyStatus",
         "title": "Show API Key Status",
-        "category": "TokiToki",
+        "category": "Tokitoki",
         "icon": "$(shield)"
       },
       {
         "command": "tokitoki.openOutput",
         "title": "Open Output Log",
-        "category": "TokiToki",
+        "category": "Tokitoki",
         "icon": "$(output)"
       }
     ],
     "configuration": {
-      "title": "TokiToki",
+      "title": "Tokitoki",
       "properties": {
         "tokitoki.enabled": {
           "type": "boolean",
@@ -94,7 +94,7 @@
           "type": "boolean",
           "default": true,
           "scope": "application",
-          "description": "Show the TokiToki status bar item."
+          "description": "Show the Tokitoki status bar item."
         },
         "tokitoki.showNotifications": {
           "type": "boolean",
@@ -119,7 +119,7 @@
           ],
           "default": "info",
           "scope": "application",
-          "description": "Minimum level written to the TokiToki output channel."
+          "description": "Minimum level written to the Tokitoki output channel."
         }
       }
     }

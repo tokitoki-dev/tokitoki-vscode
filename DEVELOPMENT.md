@@ -8,19 +8,19 @@ directories, mirroring the macOS menu bar app.
 ```text
 editor events -> throttler -> tokitoki heartbeat --entity FILE ...
                                    |
-                     local queue (~/.tokitoki) -> TokiToki server
+                     local queue (~/.tokitoki) -> Tokitoki server
 ```
 
 - Selection changes, edits, tab switches, saves, debug and task events feed a
   50ms debounce, then a throttler: one heartbeat per file every 2 minutes,
   with writes and file/category switches passing immediately. The same rule
-  every TokiToki editor plugin uses.
+  every Tokitoki editor plugin uses.
 - The CLI detects language and applies `.tokitoki` project files centrally,
   and queues events locally when offline.
 
 ## The shared CLI
 
-Every TokiToki client on a machine invokes one shared CLI:
+Every Tokitoki client on a machine invokes one shared CLI:
 
 ```text
 ~/.tokitoki/bin/tokitoki                    macOS, Linux

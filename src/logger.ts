@@ -10,7 +10,7 @@ const LOG_LEVELS: Record<LogLevelName, number> = {
 };
 
 export class Logger implements vscode.Disposable {
-  private readonly outputChannel = vscode.window.createOutputChannel('TokiToki');
+  private readonly outputChannel = vscode.window.createOutputChannel('Tokitoki');
   private level: LogLevelName = 'info';
 
   public setLevel(level: LogLevelName): void {

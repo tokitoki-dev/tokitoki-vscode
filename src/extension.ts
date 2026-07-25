@@ -10,7 +10,7 @@ const LAST_UPDATE_CHECK_KEY = 'tokitoki.lastUpdateCheckAt';
 /** Matches the macOS menu bar app's automatic sync cadence. */
 const SYNC_INTERVAL_MS = 30 * 60 * 1000;
 
-class TokiTokiExtension implements vscode.Disposable {
+class TokitokiExtension implements vscode.Disposable {
   private config: ExtensionConfig = readConfig();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly statusBar: vscode.StatusBarItem;
@@ -31,7 +31,7 @@ class TokiTokiExtension implements vscode.Disposable {
       vscode.StatusBarAlignment.Left,
       0,
     );
-    this.statusBar.name = 'TokiToki';
+    this.statusBar.name = 'Tokitoki';
     this.statusBar.command = 'tokitoki.openDashboard';
     this.tracker = new ActivityTracker((heartbeat) => this.sendHeartbeat(heartbeat));
 
@@ -47,7 +47,7 @@ class TokiTokiExtension implements vscode.Disposable {
   }
 
   public async initialize(): Promise<void> {
-    this.logger.info(`TokiToki extension activated from ${this.context.extensionPath}`);
+    this.logger.info(`Tokitoki extension activated from ${this.context.extensionPath}`);
     this.reloadConfig();
     if (!this.config.enabled) {
       return;
@@ -80,13 +80,13 @@ class TokiTokiExtension implements vscode.Disposable {
   public async syncNow(userInitiated: boolean): Promise<void> {
     if (!this.config.enabled) {
       if (userInitiated) {
-        await vscode.window.showInformationMessage('TokiToki is disabled in settings.');
+        await vscode.window.showInformationMessage('Tokitoki is disabled in settings.');
       }
       return;
     }
     if (this.syncRunning) {
       if (userInitiated) {
-        await vscode.window.showInformationMessage('TokiToki sync is already running.');
+        await vscode.window.showInformationMessage('Tokitoki sync is already running.');
       }
       return;
     }
@@ -102,7 +102,7 @@ class TokiTokiExtension implements vscode.Disposable {
     }
 
     this.syncRunning = true;
-    this.updateStatus('$(sync~spin) TokiToki', 'TokiToki AI usage sync in progress');
+    this.updateStatus('$(sync~spin) Tokitoki', 'Tokitoki AI usage sync in progress');
     this.logger.info('Starting AI usage sync');
 
     try {
@@ -111,10 +111,10 @@ class TokiTokiExtension implements vscode.Disposable {
       this.lastSyncAt = new Date();
       this.updateReadyStatus();
       if (userInitiated && this.config.showNotifications) {
-        await vscode.window.showInformationMessage('TokiToki sync completed.');
+        await vscode.window.showInformationMessage('Tokitoki sync completed.');
       }
     } catch (error) {
-      await this.handleCommandError(error, 'TokiToki sync failed.', userInitiated);
+      await this.handleCommandError(error, 'Tokitoki sync failed.', userInitiated);
     } finally {
       this.syncRunning = false;
     }
@@ -130,7 +130,7 @@ class TokiTokiExtension implements vscode.Disposable {
       // No key configured yet.
     }
     const apiKey = await vscode.window.showInputBox({
-      prompt: 'TokiToki API key',
+      prompt: 'Tokitoki API key',
       placeHolder: 'Paste your API key from tokitoki.dev',
       value: existing,
       password: true,
@@ -146,13 +146,13 @@ class TokiTokiExtension implements vscode.Disposable {
       this.logCommandOutput(result.stdout, result.stderr);
       this.updateReadyStatus();
       if (this.config.showNotifications) {
-        await vscode.window.showInformationMessage('TokiToki API key saved.');
+        await vscode.window.showInformationMessage('Tokitoki API key saved.');
       }
       if (this.config.autoSync) {
         void this.syncNow(false);
       }
     } catch (error) {
-      await this.handleCommandError(error, 'Unable to save TokiToki API key.', true);
+      await this.handleCommandError(error, 'Unable to save Tokitoki API key.', true);
     }
   }
 
@@ -161,9 +161,9 @@ class TokiTokiExtension implements vscode.Disposable {
       const result = await this.createCli().getApiKey();
       this.logCommandOutput('', result.stderr);
       const masked = maskApiKey(result.stdout);
-      await vscode.window.showInformationMessage(`TokiToki API key is configured (${masked}).`);
+      await vscode.window.showInformationMessage(`Tokitoki API key is configured (${masked}).`);
     } catch (error) {
-      await this.handleCommandError(error, 'TokiToki API key is not configured.', true);
+      await this.handleCommandError(error, 'Tokitoki API key is not configured.', true);
     }
   }
 
@@ -235,7 +235,7 @@ class TokiTokiExtension implements vscode.Disposable {
       return;
     }
     this.promptedForApiKey = true;
-    this.updateStatus('$(warning) TokiToki', 'TokiToki API key is not configured', true);
+    this.updateStatus('$(warning) Tokitoki', 'Tokitoki API key is not configured', true);
     await this.setApiKey();
   }
 
@@ -288,7 +288,7 @@ class TokiTokiExtension implements vscode.Disposable {
   }
 
   private async handleCommandError(error: unknown, message: string, notify: boolean): Promise<void> {
-    this.updateStatus('$(error) TokiToki', message, true);
+    this.updateStatus('$(error) Tokitoki', message, true);
     if (error instanceof TokitokiCliError) {
       this.logger.error(`${message} ${error.message}`);
       this.logCommandOutput(error.stdout, error.stderr);
@@ -319,17 +319,17 @@ class TokiTokiExtension implements vscode.Disposable {
 
   private updateReadyStatus(): void {
     if (!this.config.enabled) {
-      this.updateStatus('$(circle-slash) TokiToki', 'TokiToki is disabled');
+      this.updateStatus('$(circle-slash) Tokitoki', 'Tokitoki is disabled');
       return;
     }
-    const parts = ['TokiToki: tracking coding activity. Click to open your dashboard.'];
+    const parts = ['Tokitoki: tracking coding activity. Click to open your dashboard.'];
     if (this.lastHeartbeatAt) {
       parts.push(`Last heartbeat: ${this.lastHeartbeatAt.toLocaleString()}.`);
     }
     if (this.lastSyncAt) {
       parts.push(`Last AI usage sync: ${this.lastSyncAt.toLocaleString()}.`);
     }
-    this.updateStatus('$(pulse) TokiToki', parts.join(' '));
+    this.updateStatus('$(pulse) Tokitoki', parts.join(' '));
   }
 
   private updateStatus(text: string, tooltip: string, error = false): void {
@@ -346,11 +346,11 @@ class TokiTokiExtension implements vscode.Disposable {
   }
 }
 
-let controller: TokiTokiExtension | undefined;
+let controller: TokitokiExtension | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   const logger = new Logger();
-  controller = new TokiTokiExtension(context, logger);
+  controller = new TokitokiExtension(context, logger);
 
   context.subscriptions.push(
     controller,

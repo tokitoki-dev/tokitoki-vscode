@@ -26,8 +26,9 @@
   ],
   "main": "./out/extension.js",
   "scripts": {
-    "vscode:prepublish": "npm run build:agent && npm run compile",
+    "vscode:prepublish": "npm run compile",
     "build:agent": "node scripts/build-agent-binaries.js",
+    "fetch:agent": "sh scripts/fetch-cli-release.sh",
     "compile": "tsc -p ./",
     "check": "tsc --noEmit -p ./",
     "watch": "tsc -watch -p ./",

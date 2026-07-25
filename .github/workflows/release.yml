@@ -1,0 +1,85 @@
+name: Release
+
+# Pushing a semver tag (v1.2.0) on main packages the extension VSIX with the
+# pinned CLI release bundled for every supported platform and publishes it as
+# a GitHub release.
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Verify the release tag belongs to main
+        run: |
+          git fetch origin main --no-tags
+          commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "Release tags must point to a commit on main" >&2
+            exit 1
+          fi
+
+      - name: Verify the tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "package.json version $version does not match tag $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-node@6044e13b5df428fefb6f3ab55f9d1cdd7f2b2c73 # v6.0.0
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Fetch pinned CLI release
+        run: scripts/fetch-cli-release.sh
+
+      - run: npm run check
+
+      - run: npm test
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@6044e13b5df428fefb6f3ab55f9d1cdd7f2b2c73 # v6.0.0
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Fetch pinned CLI release
+        run: scripts/fetch-cli-release.sh
+
+      - name: Package VSIX
+        run: npx vsce package --no-dependencies --allow-missing-repository
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" tokitoki-vscode-*.vsix \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

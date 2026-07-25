@@ -1,0 +1,11 @@
+# The tokitoki-cli release bundled into the extension. The pin and all
+# digests are reviewed together. Environment overrides are intentionally not
+# accepted: changing the CLI bundled by an extension release must be a
+# visible repository change that goes through the protected main branch.
+TOKITOKI_CLI_TAG="v0.1.0"
+TOKITOKI_CLI_DARWIN_AMD64_SHA256="bf3ea201211fce41e6314dba05af7a69056be3d06e92f0f111dabdad77dc7023"
+TOKITOKI_CLI_DARWIN_ARM64_SHA256="c208ac05037c2897e59301f288d3ba00bb1f7e2ac977f3a95729f5fafd7933a6"
+TOKITOKI_CLI_LINUX_AMD64_SHA256="4dc82668b4ccb6aa8e727c5cb2d03e0939f2cca97579551d8fef29be69b83b79"
+TOKITOKI_CLI_LINUX_ARM64_SHA256="98fe7c9c9e2b166c442e4a8a502aab8ab39f12090a2689ee2282df02528418c7"
+TOKITOKI_CLI_WINDOWS_AMD64_SHA256="d6d281a634374815b219504334d4ba53d628af42aaab531b7e48732fa3355af5"
+TOKITOKI_CLI_WINDOWS_ARM64_SHA256="577e3f7e3d0a1434b26dc1201989e7dd3e39a6105d40cbf1723a2c22b98ca3a4"

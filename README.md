@@ -1,64 +1,72 @@
-# TokiToki VS Code
+# TokiToki — Coding Time & AI Usage Analytics
 
-Coding time tracking and local AI usage sync for TokiToki.
+**Know where your time and your AI spend actually go.**
 
-The extension watches editor activity and sends WakaTime-style heartbeats
-through the `tokitoki` CLI: one per two minutes per file, with file switches,
-category changes, and saves passing immediately. The CLI queues events in the
-shared local database, so offline work uploads later. It also scans local AI
-client data (Claude Code, Codex, ...) on an interval, same as the macOS menu
-bar app.
+TokiToki automatically tracks your coding activity in VS Code and syncs your
+local AI agent usage — Claude Code, Codex, Copilot, Gemini, and a dozen more —
+into one dashboard at [tokitoki.dev](https://tokitoki.dev).
 
-## The shared CLI
+## Features
 
-Every TokiToki client on a machine invokes one shared CLI:
+- **Automatic time tracking** — just code. TokiToki records which files,
+  projects, and languages you work in, including debugging and build time.
+  No timers to start, no forms to fill.
+- **AI usage analytics** — your local AI coding agents (Claude Code, Codex,
+  Copilot CLI, Gemini, Amp, Goose, OpenCode, and more) are scanned and synced
+  automatically, so tokens, models, and costs show up next to your coding
+  time.
+- **One dashboard for everything** — daily timelines, per-project totals,
+  language breakdowns, and AI cost tracking across every editor and machine
+  you use.
+- **Works offline** — activity is queued locally and uploaded when you are
+  back online. Nothing is lost on a plane.
+- **Open source** — the extension and its CLI are open source, and the same
+  tracking works in JetBrains IDEs, Eclipse, and the macOS menu bar app.
 
-```text
-~/.tokitoki/bin/tokitoki            macOS, Linux
-%USERPROFILE%\.tokitoki\bin\tokitoki.exe   Windows
-```
+## Quick Start
 
-The extension resolves the shared binary first and falls back to its bundled
-copy (`${extensionPath}/bin/tokitoki-${platform}-${arch}`). On activation it
-seeds the shared location when the shared binary is missing or reports an
-older release version — staged and renamed into place, never a downgrade —
-then asks the CLI to update itself at most once a day. Packaging runs
-`npm run build:agent`, which cross-compiles the CLI from `tokitoki-cli`;
-an exact release tag stamps the version, otherwise the build reports `dev`
-and only ever fills an empty shared slot.
+1. Install the extension.
+2. Run **TokiToki: Set API Key** from the command palette and paste the key
+   from [tokitoki.dev](https://tokitoki.dev) — the extension will also prompt
+   you on first use.
+3. That's it. Click the status bar clock anytime to open your dashboard,
+   already signed in.
 
 ## Commands
 
-- `TokiToki: Open Dashboard` opens the web dashboard, signed in when possible.
-- `TokiToki: Sync AI Usage Now` runs one AI usage scan and upload.
-- `TokiToki: Set API Key` runs `tokitoki set key <API_KEY>`.
-- `TokiToki: Show API Key Status` displays a masked key.
-- `TokiToki: Open Output Log` opens the extension output channel.
-
-The status bar item opens the dashboard when clicked.
+| Command | What it does |
+| --- | --- |
+| `TokiToki: Open Dashboard` | Opens your web dashboard, signed in |
+| `TokiToki: Set API Key` | Stores your API key for every TokiToki client |
+| `TokiToki: Show API Key Status` | Shows the configured key, masked |
+| `TokiToki: Sync AI Usage Now` | Runs one AI usage scan immediately |
+| `TokiToki: Open Output Log` | Opens the extension log |
 
 ## Settings
 
-- `tokitoki.enabled`: enable coding time tracking and AI usage sync.
-- `tokitoki.autoSync`: scan AI usage on startup and every 30 minutes.
-- `tokitoki.baseUrl`: server override for staging; empty uses the CLI default.
-- `tokitoki.statusBar.enabled`: show the status bar item.
-- `tokitoki.showNotifications`: notifications for failures and manual commands.
-- `tokitoki.commandTimeoutSeconds`: timeout for one CLI command.
-- `tokitoki.logLevel`: output channel verbosity.
+| Setting | Default | Description |
+| --- | --- | --- |
+| `tokitoki.enabled` | `true` | Enable tracking and AI usage sync |
+| `tokitoki.autoSync` | `true` | Scan AI usage on startup and every 30 minutes |
+| `tokitoki.statusBar.enabled` | `true` | Show the status bar item |
+| `tokitoki.showNotifications` | `true` | Notify on failures and manual commands |
+| `tokitoki.baseUrl` | _(empty)_ | Self-hosted / staging server override |
+| `tokitoki.logLevel` | `info` | Output channel verbosity |
 
-## Build and Package
+To pin a stable project name across machines and editors, put a `.tokitoki`
+file in the project root — the first line is the project name, an optional
+second line overrides the branch.
 
-```sh
-npm install
-npm run fetch:agent   # pinned CLI release (what CI bundles), or:
-npm run build:agent   # cross-compile from ../tokitoki-cli source
-npm run check
-npm test
-npm run package
-```
+## Privacy
 
-CI and releases bundle the CLI release pinned in
-`scripts/cli-release-pins.sh`; releases are cut by pushing a `vX.Y.Z` tag on
-`main`, which must match `package.json`. `main` only accepts merges from
-`dev`.
+TokiToki records activity metadata only: file paths, project and branch
+names, language, timestamps, and cursor position — **never your code**. AI
+usage sync reads token counts and model names from your local agent data.
+Everything is queued in `~/.tokitoki` and uploaded over HTTPS with your API
+key; delete your data anytime from the dashboard.
+
+## Links
+
+- [Dashboard](https://tokitoki.dev)
+- [Source & issues](https://github.com/tokitoki-dev/tokitoki-vscode)
+- [Contributing / development docs](https://github.com/tokitoki-dev/tokitoki-vscode/blob/main/DEVELOPMENT.md)

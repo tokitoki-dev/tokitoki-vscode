@@ -9,3 +9,4 @@ node_modules/**
 *.vsix
 .gitignore
 DEVELOPMENT.md
+Makefile

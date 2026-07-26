@@ -1,0 +1,19 @@
+{
+  "Tokitoki AI usage sync in progress": "Tokitoki が AI 利用状況を同期中",
+  "Tokitoki sync failed.": "Tokitoki の同期に失敗しました。",
+  "Tokitoki API key": "Tokitoki API キー",
+  "Paste your API key from tokitoki.dev": "tokitoki.dev で取得した API キーを貼り付けてください",
+  "API key is required": "API キーは必須です",
+  "Tokitoki API key saved.": "Tokitoki API キーを保存しました。",
+  "Unable to save Tokitoki API key.": "Tokitoki API キーを保存できません。",
+  "Tokitoki API key is not configured.": "Tokitoki API キーが設定されていません。",
+  "Unable to verify the Tokitoki API key.": "Tokitoki API キーを検証できません。",
+  "Tokitoki API key is valid ({0}).": "Tokitoki API キーは有効です（{0}）。",
+  "Set API Key": "API キーを設定",
+  "Tokitoki API key ({0}) was rejected by the server. Set a new one?": "Tokitoki API キー（{0}）がサーバーに拒否されました。新しいキーを設定しますか？",
+  "Tokitoki API key is not configured": "Tokitoki API キーが設定されていません",
+  "Open Log": "ログを開く",
+  "Tokitoki: tracking coding activity. Click to open your dashboard.": "Tokitoki：コーディング活動を記録中。クリックしてダッシュボードを開きます。",
+  "Last heartbeat: {0}.": "最終ハートビート：{0}。",
+  "Last AI usage sync: {0}.": "最終 AI 利用状況同期：{0}。"
+}

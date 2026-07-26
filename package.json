@@ -1,7 +1,7 @@
 {
   "name": "tokitoki-vscode",
   "displayName": "Tokitoki",
-  "description": "Automatic coding time tracking plus AI usage analytics for Claude Code, Codex, Copilot, and more \u2014 on your Tokitoki dashboard.",
+  "description": "%extension.description%",
   "version": "0.1.1",
   "publisher": "tokitoki",
   "license": "MIT",
@@ -26,6 +26,7 @@
     "onStartupFinished"
   ],
   "main": "./out/extension.js",
+  "l10n": "./l10n",
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "build:agent": "node scripts/build-agent-binaries.js",
@@ -41,19 +42,19 @@
     "commands": [
       {
         "command": "tokitoki.setApiKey",
-        "title": "Set API Key",
+        "title": "%command.setApiKey.title%",
         "category": "Tokitoki",
         "icon": "$(key)"
       },
       {
         "command": "tokitoki.openDashboard",
-        "title": "Open Dashboard",
+        "title": "%command.openDashboard.title%",
         "category": "Tokitoki",
         "icon": "$(graph)"
       },
       {
         "command": "tokitoki.showApiKeyStatus",
-        "title": "Show API Key Status",
+        "title": "%command.showApiKeyStatus.title%",
         "category": "Tokitoki",
         "icon": "$(shield)"
       }
@@ -65,32 +66,32 @@
           "type": "boolean",
           "default": true,
           "scope": "application",
-          "description": "Scan and upload local AI usage when VS Code starts and then on an interval."
+          "description": "%config.autoSync.description%"
         },
         "tokitoki.baseUrl": {
           "type": "string",
           "default": "",
           "scope": "application",
-          "description": "Server override for staging or self-hosted deployments. Empty uses the server fixed at build time (https://tokitoki.dev)."
+          "description": "%config.baseUrl.description%"
         },
         "tokitoki.statusBar.enabled": {
           "type": "boolean",
           "default": true,
           "scope": "application",
-          "description": "Show the Tokitoki status bar item."
+          "description": "%config.statusBar.enabled.description%"
         },
         "tokitoki.showNotifications": {
           "type": "boolean",
           "default": true,
           "scope": "application",
-          "description": "Show VS Code notifications for command failures and manual command results."
+          "description": "%config.showNotifications.description%"
         },
         "tokitoki.commandTimeoutSeconds": {
           "type": "number",
           "default": 140,
           "minimum": 5,
           "scope": "application",
-          "description": "Maximum seconds to wait for a single tokitoki CLI command."
+          "description": "%config.commandTimeoutSeconds.description%"
         },
         "tokitoki.logLevel": {
           "type": "string",
@@ -102,7 +103,7 @@
           ],
           "default": "info",
           "scope": "application",
-          "description": "Minimum level written to the Tokitoki output channel."
+          "description": "%config.logLevel.description%"
         }
       }
     }

@@ -208,12 +208,16 @@ export class TokitokiCli {
     // by this build, never by whatever environment the editor inherited.
     const env = { ...process.env, TOKITOKI_BASE_URL: this.config.baseUrl };
 
+    // No cwd: the CLI resolves everything it touches from os.UserHomeDir(),
+    // so it has none. Pinning one to extensionPath only added a way to fail —
+    // VS Code deletes and recreates that directory on extension update, and a
+    // spawn whose chdir() misses reports ENOENT against the *executable*,
+    // which reads as a missing binary that is in fact sitting right there.
     return new Promise((resolve, reject) => {
       execFile(
         executable,
         args,
         {
-          cwd: this.extensionPath,
           env,
           timeout: this.config.commandTimeoutSeconds * 1000,
           windowsHide: true,

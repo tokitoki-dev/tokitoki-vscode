@@ -1,0 +1,19 @@
+{
+  "Tokitoki AI usage sync in progress": "Tokitoki 正在同步 AI 使用数据",
+  "Tokitoki sync failed.": "Tokitoki 同步失败。",
+  "Tokitoki API key": "Tokitoki API 密钥",
+  "Paste your API key from tokitoki.dev": "粘贴你在 tokitoki.dev 获取的 API 密钥",
+  "API key is required": "API 密钥不能为空",
+  "Tokitoki API key saved.": "Tokitoki API 密钥已保存。",
+  "Unable to save Tokitoki API key.": "无法保存 Tokitoki API 密钥。",
+  "Tokitoki API key is not configured.": "尚未配置 Tokitoki API 密钥。",
+  "Unable to verify the Tokitoki API key.": "无法验证 Tokitoki API 密钥。",
+  "Tokitoki API key is valid ({0}).": "Tokitoki API 密钥有效（{0}）。",
+  "Set API Key": "设置 API 密钥",
+  "Tokitoki API key ({0}) was rejected by the server. Set a new one?": "Tokitoki API 密钥（{0}）被服务器拒绝。要设置一个新密钥吗？",
+  "Tokitoki API key is not configured": "尚未配置 Tokitoki API 密钥",
+  "Open Log": "打开日志",
+  "Tokitoki: tracking coding activity. Click to open your dashboard.": "Tokitoki：正在记录编码活动。点击打开仪表板。",
+  "Last heartbeat: {0}.": "最近一次心跳：{0}。",
+  "Last AI usage sync: {0}.": "最近一次 AI 使用同步：{0}。"
+}

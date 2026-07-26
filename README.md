@@ -39,13 +39,11 @@ into one dashboard at [tokitoki.dev](https://tokitoki.dev).
 | `Tokitoki: Set API Key` | Stores your API key for every Tokitoki client |
 | `Tokitoki: Open Dashboard` | Opens your web dashboard, signed in |
 | `Tokitoki: Show API Key Status` | Shows the configured key, masked |
-| `Tokitoki: Toggle Tracking` | Enables or disables Tokitoki |
 
 ## Settings
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `tokitoki.enabled` | `true` | Enable tracking and AI usage sync |
 | `tokitoki.autoSync` | `true` | Scan AI usage on startup and every 30 minutes |
 | `tokitoki.statusBar.enabled` | `true` | Show the status bar item |
 | `tokitoki.showNotifications` | `true` | Notify on failures and manual commands |

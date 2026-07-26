@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Tracking is always on; the Toggle Tracking command and the
+  `tokitoki.enabled` setting are gone. Use VS Code's own extension
+  Disable button to turn Tokitoki off.
+
 ## 0.1.1
 
 - Command palette entries no longer repeat the Tokitoki prefix.

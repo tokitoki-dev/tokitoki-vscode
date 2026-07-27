@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.1.3
+
+- The status bar shows the Tokitoki logo instead of generic codicons,
+  and it spins while an AI usage sync is running.
+- Errors no longer turn the status bar red: events queue locally and
+  upload once the network is back, so failures stay in the tooltip and
+  the log.
+- Saving an API key now starts a sync immediately; it no longer waited
+  on the "API key saved" notification being dismissed.
+- A key configured outside VS Code (macOS app, `tokitoki set key`) is
+  picked up as soon as the window regains focus, instead of after a
+  restart or the next timer tick.
+- Bundled CLI updated to v0.1.4.
+
+## 0.1.2
 
 - Tracking is always on; the Toggle Tracking command and the
   `tokitoki.enabled` setting are gone. Use VS Code's own extension

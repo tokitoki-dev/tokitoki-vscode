@@ -2,7 +2,7 @@
   "name": "tokitoki-vscode",
   "displayName": "Tokitoki",
   "description": "%extension.description%",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "tokitoki",
   "license": "MIT",
   "engines": {
@@ -39,6 +39,15 @@
     "generate": "node scripts/generate-server-url.js"
   },
   "contributes": {
+    "icons": {
+      "tokitoki-logo": {
+        "description": "Tokitoki logo",
+        "default": {
+          "fontPath": "images/tokitoki-icon.woff",
+          "fontCharacter": "\\E900"
+        }
+      }
+    },
     "commands": [
       {
         "command": "tokitoki.setApiKey",

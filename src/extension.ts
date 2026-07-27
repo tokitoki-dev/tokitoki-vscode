@@ -20,6 +20,7 @@ class TokitokiExtension implements vscode.Disposable {
   private lastHeartbeatAt: Date | undefined;
   private lastSyncAt: Date | undefined;
   private promptedForApiKey = false;
+  private apiKeyMissing = false;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -40,6 +41,15 @@ class TokitokiExtension implements vscode.Disposable {
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('tokitoki')) {
           this.reloadConfig();
+        }
+      }),
+      // The key lives in the CLI's shared store, so the macOS app or a
+      // terminal `tokitoki set key` can configure it while this window sits
+      // keyless. Refocusing the window is exactly when that user comes back —
+      // recheck then instead of making them wait for the timer or a restart.
+      vscode.window.onDidChangeWindowState((state) => {
+        if (state.focused && this.apiKeyMissing && this.config.autoSync) {
+          void this.syncNow();
         }
       }),
     );
@@ -83,12 +93,14 @@ class TokitokiExtension implements vscode.Disposable {
     }
     try {
       await this.createCli().getApiKey();
+      this.apiKeyMissing = false;
     } catch {
+      this.apiKeyMissing = true;
       return;
     }
 
     this.syncRunning = true;
-    this.updateStatus('$(sync~spin) Tokitoki', vscode.l10n.t('Tokitoki AI usage sync in progress'));
+    this.updateStatus('$(tokitoki-logo~spin) Tokitoki', vscode.l10n.t('Tokitoki AI usage sync in progress'));
     this.logger.info('Starting AI usage sync');
 
     try {
@@ -128,11 +140,13 @@ class TokitokiExtension implements vscode.Disposable {
       const result = await this.createCli().setApiKey(apiKey.trim());
       this.logCommandOutput(result.stdout, result.stderr);
       this.updateReadyStatus();
+      // Sync starts before the notification: an awaited no-button toast only
+      // resolves when the user dismisses it, so anything after it may never
+      // run. And a user who just set a key wants data flowing now — this
+      // one-time sync is their action, not autoSync's business.
+      void this.syncNow();
       if (this.config.showNotifications) {
         await vscode.window.showInformationMessage(vscode.l10n.t('Tokitoki API key saved.'));
-      }
-      if (this.config.autoSync) {
-        void this.syncNow();
       }
     } catch (error) {
       await this.handleCommandError(error, vscode.l10n.t('Unable to save Tokitoki API key.'), true);
@@ -220,6 +234,7 @@ class TokitokiExtension implements vscode.Disposable {
         this.logger.debug(`Heartbeat sent: ${heartbeat.entity} (${heartbeat.category})`);
       } catch (error) {
         if (error instanceof TokitokiCliError && error.isMissingApiKey) {
+          this.apiKeyMissing = true;
           await this.promptForApiKeyOnce();
           return;
         }
@@ -233,7 +248,7 @@ class TokitokiExtension implements vscode.Disposable {
       return;
     }
     this.promptedForApiKey = true;
-    this.updateStatus('$(warning) Tokitoki', vscode.l10n.t('Tokitoki API key is not configured'), true);
+    this.updateStatus('$(tokitoki-logo) Tokitoki', vscode.l10n.t('Tokitoki API key is not configured'));
     await this.setApiKey();
   }
 
@@ -282,7 +297,10 @@ class TokitokiExtension implements vscode.Disposable {
   }
 
   private async handleCommandError(error: unknown, message: string, notify: boolean): Promise<void> {
-    this.updateStatus('$(error) Tokitoki', message, true);
+    // Failures are not alarming: the CLI queues events locally and uploads
+    // once the network is back, so the status bar stays calm — details go to
+    // the tooltip and the log instead of an error-red background.
+    this.updateStatus('$(tokitoki-logo) Tokitoki', message);
     if (error instanceof TokitokiCliError) {
       this.logger.error(`${message} ${error.message}`);
       this.logCommandOutput(error.stdout, error.stderr);
@@ -319,15 +337,12 @@ class TokitokiExtension implements vscode.Disposable {
     if (this.lastSyncAt) {
       parts.push(vscode.l10n.t('Last AI usage sync: {0}.', this.lastSyncAt.toLocaleString()));
     }
-    this.updateStatus('$(pulse) Tokitoki', parts.join(' '));
+    this.updateStatus('$(tokitoki-logo) Tokitoki', parts.join(' '));
   }
 
-  private updateStatus(text: string, tooltip: string, error = false): void {
+  private updateStatus(text: string, tooltip: string): void {
     this.statusBar.text = text;
     this.statusBar.tooltip = tooltip;
-    this.statusBar.backgroundColor = error
-      ? new vscode.ThemeColor('statusBarItem.errorBackground')
-      : undefined;
     if (this.config.statusBarEnabled) {
       this.statusBar.show();
     } else {

@@ -39,6 +39,15 @@
     "generate": "node scripts/generate-server-url.js"
   },
   "contributes": {
+    "icons": {
+      "tokitoki-logo": {
+        "description": "Tokitoki logo",
+        "default": {
+          "fontPath": "images/tokitoki-icon.woff",
+          "fontCharacter": "\\E900"
+        }
+      }
+    },
     "commands": [
       {
         "command": "tokitoki.setApiKey",

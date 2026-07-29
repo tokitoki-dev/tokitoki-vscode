@@ -42,10 +42,10 @@ into one dashboard at [tokitoki.dev](https://tokitoki.dev).
 
 ## Settings
 
-| Setting | Default | Description |
-| --- | --- | --- |
-| `tokitoki.autoSync` | `true` | Scan AI usage on startup and every 30 minutes |
-| `tokitoki.statusBar.enabled` | `true` | Show the status bar item |
+`tokitoki.statusBar.enabled` (default `true`) shows the status bar item.
+
+Tracking and uploading need no configuration — they start with the editor and
+run for the session.
 
 To pin a stable project name across machines and editors, put a `.tokitoki`
 file in the project root — the first line is the project name, an optional

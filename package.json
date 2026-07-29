@@ -71,12 +71,6 @@
     "configuration": {
       "title": "Tokitoki",
       "properties": {
-        "tokitoki.autoSync": {
-          "type": "boolean",
-          "default": true,
-          "scope": "application",
-          "description": "%config.autoSync.description%"
-        },
         "tokitoki.statusBar.enabled": {
           "type": "boolean",
           "default": true,

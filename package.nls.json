@@ -3,6 +3,5 @@
   "command.setApiKey.title": "Set API Key",
   "command.openDashboard.title": "Open Dashboard",
   "command.showApiKeyStatus.title": "Show API Key Status",
-  "config.autoSync.description": "Scan and upload local AI usage when VS Code starts and then on an interval.",
   "config.statusBar.enabled.description": "Show the Tokitoki status bar item."
 }

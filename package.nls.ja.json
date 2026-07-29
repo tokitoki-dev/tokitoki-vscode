@@ -3,6 +3,5 @@
   "command.setApiKey.title": "API キーを設定",
   "command.openDashboard.title": "ダッシュボードを開く",
   "command.showApiKeyStatus.title": "API キーの状態を表示",
-  "config.autoSync.description": "VS Code の起動時とその後一定間隔で、ローカルの AI 利用状況をスキャンしてアップロードします。",
   "config.statusBar.enabled.description": "Tokitoki のステータスバー項目を表示します。"
 }

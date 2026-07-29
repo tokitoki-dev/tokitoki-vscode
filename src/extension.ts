@@ -49,7 +49,7 @@ class TokitokiExtension implements vscode.Disposable {
       // keyless. Refocusing the window is exactly when that user comes back —
       // recheck then instead of making them wait for the timer or a restart.
       vscode.window.onDidChangeWindowState((state) => {
-        if (state.focused && this.apiKeyMissing && this.config.autoSync) {
+        if (state.focused && this.apiKeyMissing) {
           void this.syncNow();
         }
       }),
@@ -69,9 +69,15 @@ class TokitokiExtension implements vscode.Disposable {
       this.logger.warn(`Failed to seed shared CLI: ${error instanceof Error ? error.message : String(error)}`);
     }
     void this.promptForApiKeyIfMissing();
-    if (this.config.autoSync) {
+
+    // Tracking and uploading is the whole point of the extension: it starts
+    // once here and runs for the session. Nothing turns it off short of
+    // disabling the extension.
+    this.tracker.start();
+    this.syncTimer = setInterval(() => {
       void this.syncNow();
-    }
+    }, SYNC_INTERVAL_MS);
+    void this.syncNow();
     void this.updateSharedCliDaily();
   }
 
@@ -92,25 +98,30 @@ class TokitokiExtension implements vscode.Disposable {
     if (this.syncRunning) {
       return;
     }
-    try {
-      await this.createCli().getApiKey();
-      this.apiKeyMissing = false;
-    } catch {
-      this.apiKeyMissing = true;
-      return;
-    }
-
+    // Claim the slot before the first await. Setting it after one would let
+    // the timer tick and a window focus both pass the check and start two
+    // concurrent syncs.
     this.syncRunning = true;
-    this.updateStatus('$(tokitoki-logo~spin) Tokitoki', vscode.l10n.t('Tokitoki AI usage sync in progress'));
-    this.logger.info('Starting AI usage sync');
-
     try {
-      const result = await this.createCli().sync();
-      this.logCommandOutput(result.stdout, result.stderr);
-      this.lastSyncAt = new Date();
-      this.updateReadyStatus();
-    } catch (error) {
-      await this.handleCommandError(error, vscode.l10n.t('Tokitoki sync failed.'), false);
+      try {
+        await this.createCli().getApiKey();
+        this.apiKeyMissing = false;
+      } catch {
+        this.apiKeyMissing = true;
+        return;
+      }
+
+      this.updateStatus('$(tokitoki-logo~spin) Tokitoki', vscode.l10n.t('Tokitoki AI usage sync in progress'));
+      this.logger.info('Starting AI usage sync');
+
+      try {
+        const result = await this.createCli().sync();
+        this.logCommandOutput(result.stdout, result.stderr);
+        this.lastSyncAt = new Date();
+        this.updateReadyStatus();
+      } catch (error) {
+        await this.handleCommandError(error, vscode.l10n.t('Tokitoki sync failed.'), false);
+      }
     } finally {
       this.syncRunning = false;
     }
@@ -143,8 +154,8 @@ class TokitokiExtension implements vscode.Disposable {
       this.updateReadyStatus();
       // Sync starts before the notification: an awaited no-button toast only
       // resolves when the user dismisses it, so anything after it may never
-      // run. And a user who just set a key wants data flowing now — this
-      // one-time sync is their action, not autoSync's business.
+      // run. And a user who just set a key wants data flowing now rather than
+      // at the next timer tick.
       void this.syncNow();
       await vscode.window.showInformationMessage(vscode.l10n.t('Tokitoki API key saved.'));
     } catch (error) {
@@ -208,7 +219,22 @@ class TokitokiExtension implements vscode.Disposable {
     for (const disposable of this.disposables) {
       disposable.dispose();
     }
-    this.logger.dispose();
+    // The logger outlives the disposables on purpose: a heartbeat still in
+    // flight logs from its callback, and disposing the channel first would
+    // write to a dead one. shutdown() closes it once the chain drains.
+  }
+
+  /**
+   * Waits for the in-flight heartbeat to finish, then closes the log. Tracking
+   * is already stopped by dispose(), so the chain is drained, never growing.
+   */
+  public async shutdown(): Promise<void> {
+    this.dispose();
+    try {
+      await this.heartbeatChain;
+    } finally {
+      this.logger.dispose();
+    }
   }
 
   private sendHeartbeat(heartbeat: TrackedHeartbeat): void {
@@ -268,21 +294,6 @@ class TokitokiExtension implements vscode.Disposable {
   private reloadConfig(): void {
     this.config = readConfig();
     this.updateReadyStatus();
-    this.restartSyncTimer();
-    this.tracker.start();
-  }
-
-  private restartSyncTimer(): void {
-    if (this.syncTimer) {
-      clearInterval(this.syncTimer);
-      this.syncTimer = undefined;
-    }
-    if (!this.config.autoSync) {
-      return;
-    }
-    this.syncTimer = setInterval(() => {
-      void this.syncNow();
-    }, SYNC_INTERVAL_MS);
   }
 
   private createCli(): TokitokiCli {
@@ -365,7 +376,8 @@ export function activate(context: vscode.ExtensionContext): void {
   void controller.initialize();
 }
 
-export function deactivate(): void {
-  controller?.dispose();
+export async function deactivate(): Promise<void> {
+  const active = controller;
   controller = undefined;
+  await active?.shutdown();
 }

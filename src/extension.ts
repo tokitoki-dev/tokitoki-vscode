@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { ActivityTracker, TrackedHeartbeat } from './activityTracker';
 import { ExtensionConfig, readConfig } from './config';
 import { Logger } from './logger';
+import { TOKITOKI_BASE_URL } from './serverUrl';
 import { maskApiKey, TokitokiCli, TokitokiCliError } from './tokitokiCli';
 
 const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -57,7 +58,7 @@ class TokitokiExtension implements vscode.Disposable {
 
   public async initialize(): Promise<void> {
     this.logger.info(`Tokitoki extension activated from ${this.context.extensionPath}`);
-    this.logger.info(`Server: ${this.config.baseUrl}`);
+    this.logger.info(`Server: ${TOKITOKI_BASE_URL}`);
     this.reloadConfig();
 
     // Seed the shared CLI before the first invocation so everything binds to
@@ -145,9 +146,7 @@ class TokitokiExtension implements vscode.Disposable {
       // run. And a user who just set a key wants data flowing now — this
       // one-time sync is their action, not autoSync's business.
       void this.syncNow();
-      if (this.config.showNotifications) {
-        await vscode.window.showInformationMessage(vscode.l10n.t('Tokitoki API key saved.'));
-      }
+      await vscode.window.showInformationMessage(vscode.l10n.t('Tokitoki API key saved.'));
     } catch (error) {
       await this.handleCommandError(error, vscode.l10n.t('Unable to save Tokitoki API key.'), true);
     }
@@ -198,7 +197,7 @@ class TokitokiExtension implements vscode.Disposable {
     } catch (error) {
       this.logger.debug(`Dashboard URL unavailable: ${error instanceof Error ? error.message : String(error)}`);
     }
-    await vscode.env.openExternal(vscode.Uri.parse(this.config.baseUrl));
+    await vscode.env.openExternal(vscode.Uri.parse(TOKITOKI_BASE_URL));
   }
 
   public dispose(): void {
@@ -268,7 +267,6 @@ class TokitokiExtension implements vscode.Disposable {
 
   private reloadConfig(): void {
     this.config = readConfig();
-    this.logger.setLevel(this.config.logLevel);
     this.updateReadyStatus();
     this.restartSyncTimer();
     this.tracker.start();
@@ -288,7 +286,7 @@ class TokitokiExtension implements vscode.Disposable {
   }
 
   private createCli(): TokitokiCli {
-    return new TokitokiCli(this.config, this.context.extensionPath);
+    return new TokitokiCli(this.context.extensionPath);
   }
 
   private pluginUserAgent(): string {
@@ -308,7 +306,7 @@ class TokitokiExtension implements vscode.Disposable {
       this.logger.error(`${message} ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    if (!notify || !this.config.showNotifications) {
+    if (!notify) {
       return;
     }
     const openLog = vscode.l10n.t('Open Log');

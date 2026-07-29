@@ -77,42 +77,11 @@
           "scope": "application",
           "description": "%config.autoSync.description%"
         },
-        "tokitoki.baseUrl": {
-          "type": "string",
-          "default": "",
-          "scope": "application",
-          "description": "%config.baseUrl.description%"
-        },
         "tokitoki.statusBar.enabled": {
           "type": "boolean",
           "default": true,
           "scope": "application",
           "description": "%config.statusBar.enabled.description%"
-        },
-        "tokitoki.showNotifications": {
-          "type": "boolean",
-          "default": true,
-          "scope": "application",
-          "description": "%config.showNotifications.description%"
-        },
-        "tokitoki.commandTimeoutSeconds": {
-          "type": "number",
-          "default": 140,
-          "minimum": 5,
-          "scope": "application",
-          "description": "%config.commandTimeoutSeconds.description%"
-        },
-        "tokitoki.logLevel": {
-          "type": "string",
-          "enum": [
-            "debug",
-            "info",
-            "warn",
-            "error"
-          ],
-          "default": "info",
-          "scope": "application",
-          "description": "%config.logLevel.description%"
         }
       }
     }

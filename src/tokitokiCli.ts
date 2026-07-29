@@ -3,7 +3,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { ExtensionConfig } from './config';
+import { TOKITOKI_BASE_URL } from './serverUrl';
+
+// A single CLI call has no business running longer than this. Long enough for
+// a slow first sync on a bad network, short enough that a wedged process does
+// not hang the extension forever.
+const COMMAND_TIMEOUT_MS = 140 * 1000;
 
 export interface CommandResult {
   stdout: string;
@@ -44,10 +49,7 @@ export class TokitokiCliError extends Error {
 }
 
 export class TokitokiCli {
-  constructor(
-    private readonly config: ExtensionConfig,
-    private readonly extensionPath: string,
-  ) {}
+  constructor(private readonly extensionPath: string) {}
 
   /**
    * The CLI shared by every Tokitoki client on this machine. The location is
@@ -204,9 +206,10 @@ export class TokitokiCli {
 
   private runBinary(executable: string, args: string[]): Promise<CommandResult> {
     const command = [executable, ...args].join(' ');
-    // Always pass the resolved server URL so the CLI's behavior is decided
-    // by this build, never by whatever environment the editor inherited.
-    const env = { ...process.env, TOKITOKI_BASE_URL: this.config.baseUrl };
+    // The server is fixed at build time and passed explicitly on every call:
+    // neither the ambient environment nor a user setting gets to redirect
+    // where the API key and usage data are sent.
+    const env = { ...process.env, TOKITOKI_BASE_URL };
 
     // No cwd: the CLI resolves everything it touches from os.UserHomeDir(),
     // so it has none. Pinning one to extensionPath only added a way to fail —
@@ -219,7 +222,7 @@ export class TokitokiCli {
         args,
         {
           env,
-          timeout: this.config.commandTimeoutSeconds * 1000,
+          timeout: COMMAND_TIMEOUT_MS,
           windowsHide: true,
           maxBuffer: 1024 * 1024,
         },

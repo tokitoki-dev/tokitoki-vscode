@@ -52,7 +52,9 @@ per-target staging area.
 The server URL is baked in at compile time by
 `scripts/generate-server-url.js`: unset builds talk to production, and
 `TOKITOKI_BASE_URL=http://localhost:9093 make` produces a test-server
-package. At runtime only the `tokitoki.baseUrl` setting overrides it.
+package. There is no runtime override: the extension passes the baked-in URL
+to every CLI invocation, so neither a setting nor the inherited environment
+can redirect where API keys and usage data go.
 
 CI and releases bundle the CLI release pinned in
 `scripts/cli-release-pins.sh`; releases are cut by pushing a `vX.Y.Z` tag on

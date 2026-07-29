@@ -4,9 +4,5 @@
   "command.openDashboard.title": "打开仪表板",
   "command.showApiKeyStatus.title": "查看 API 密钥状态",
   "config.autoSync.description": "在 VS Code 启动时以及之后定期扫描并上传本地 AI 使用数据。",
-  "config.baseUrl.description": "用于测试环境或自托管部署的服务器覆盖地址。留空则使用构建时固定的服务器（https://tokitoki.dev）。",
-  "config.statusBar.enabled.description": "显示 Tokitoki 状态栏项。",
-  "config.showNotifications.description": "在命令失败或手动执行命令时显示 VS Code 通知。",
-  "config.commandTimeoutSeconds.description": "等待单个 tokitoki CLI 命令的最长秒数。",
-  "config.logLevel.description": "写入 Tokitoki 输出通道的最低日志级别。"
+  "config.statusBar.enabled.description": "显示 Tokitoki 状态栏项。"
 }

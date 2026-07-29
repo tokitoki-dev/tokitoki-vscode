@@ -46,9 +46,6 @@ into one dashboard at [tokitoki.dev](https://tokitoki.dev).
 | --- | --- | --- |
 | `tokitoki.autoSync` | `true` | Scan AI usage on startup and every 30 minutes |
 | `tokitoki.statusBar.enabled` | `true` | Show the status bar item |
-| `tokitoki.showNotifications` | `true` | Notify on failures and manual commands |
-| `tokitoki.baseUrl` | _(empty)_ | Self-hosted / staging server override |
-| `tokitoki.logLevel` | `info` | Output channel verbosity |
 
 To pin a stable project name across machines and editors, put a `.tokitoki`
 file in the project root — the first line is the project name, an optional

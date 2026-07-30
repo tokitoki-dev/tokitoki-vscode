@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.4
+
+- Settings that did nothing for you are gone: `tokitoki.autoSync`,
+  `tokitoki.baseUrl`, `tokitoki.showNotifications`,
+  `tokitoki.commandTimeoutSeconds`, and `tokitoki.logLevel`. Syncing is
+  always on and the server URL is baked in at build time.
+- Clearer message when no API key is set, instead of a generic CLI
+  failure.
+- Bundled CLI updated to v0.1.5.
+
 ## 0.1.3
 
 - The status bar shows the Tokitoki logo instead of generic codicons,

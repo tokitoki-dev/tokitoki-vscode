@@ -3,10 +3,5 @@
   "command.setApiKey.title": "API キーを設定",
   "command.openDashboard.title": "ダッシュボードを開く",
   "command.showApiKeyStatus.title": "API キーの状態を表示",
-  "config.autoSync.description": "VS Code の起動時とその後一定間隔で、ローカルの AI 利用状況をスキャンしてアップロードします。",
-  "config.baseUrl.description": "ステージングやセルフホスト環境向けのサーバー上書き設定。空の場合はビルド時に固定されたサーバー（https://tokitoki.dev）を使用します。",
-  "config.statusBar.enabled.description": "Tokitoki のステータスバー項目を表示します。",
-  "config.showNotifications.description": "コマンドの失敗や手動コマンドの結果を VS Code の通知で表示します。",
-  "config.commandTimeoutSeconds.description": "単一の tokitoki CLI コマンドを待機する最大秒数。",
-  "config.logLevel.description": "Tokitoki 出力チャネルに書き込む最低ログレベル。"
+  "config.statusBar.enabled.description": "Tokitoki のステータスバー項目を表示します。"
 }

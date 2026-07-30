@@ -3,10 +3,5 @@
   "command.setApiKey.title": "Set API Key",
   "command.openDashboard.title": "Open Dashboard",
   "command.showApiKeyStatus.title": "Show API Key Status",
-  "config.autoSync.description": "Scan and upload local AI usage when VS Code starts and then on an interval.",
-  "config.baseUrl.description": "Server override for staging or self-hosted deployments. Empty uses the server fixed at build time (https://tokitoki.dev).",
-  "config.statusBar.enabled.description": "Show the Tokitoki status bar item.",
-  "config.showNotifications.description": "Show VS Code notifications for command failures and manual command results.",
-  "config.commandTimeoutSeconds.description": "Maximum seconds to wait for a single tokitoki CLI command.",
-  "config.logLevel.description": "Minimum level written to the Tokitoki output channel."
+  "config.statusBar.enabled.description": "Show the Tokitoki status bar item."
 }

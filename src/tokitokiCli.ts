@@ -3,7 +3,16 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { ExtensionConfig } from './config';
+import { TOKITOKI_BASE_URL } from './serverUrl';
+
+// A single CLI call has no business running longer than this. Long enough for
+// a slow first sync on a bad network, short enough that a wedged process does
+// not hang the extension forever.
+const COMMAND_TIMEOUT_MS = 140 * 1000;
+
+// Exit code the CLI reserves for "no API key is configured" (cmd/tokitoki:
+// exitNoAPIKey). Any other non-zero exit is a transient failure.
+const EXIT_NO_API_KEY = 3;
 
 export interface CommandResult {
   stdout: string;
@@ -38,16 +47,18 @@ export class TokitokiCliError extends Error {
     this.stderr = stderr;
   }
 
+  /**
+   * True only when the CLI reports that no key is configured. Every other
+   * failure — offline, server down, timeout — is transient and must not send
+   * the user to the key prompt: their key is fine.
+   */
   public get isMissingApiKey(): boolean {
-    return /api key/i.test(this.stderr);
+    return this.code === EXIT_NO_API_KEY;
   }
 }
 
 export class TokitokiCli {
-  constructor(
-    private readonly config: ExtensionConfig,
-    private readonly extensionPath: string,
-  ) {}
+  constructor(private readonly extensionPath: string) {}
 
   /**
    * The CLI shared by every Tokitoki client on this machine. The location is
@@ -69,9 +80,14 @@ export class TokitokiCli {
       return shared;
     }
     const bundled = this.bundledBinaryPath();
+    if (isExecutable(bundled)) {
+      return bundled;
+    }
     if (!fs.existsSync(bundled)) {
       throw new Error(`Bundled tokitoki CLI is missing: ${bundled}`);
     }
+    // Only when the packaged bit did not survive install. This runs on every
+    // heartbeat, so the common path must not touch the filesystem twice.
     if (process.platform !== 'win32') {
       fs.chmodSync(bundled, 0o755);
     }
@@ -175,7 +191,15 @@ export class TokitokiCli {
    * rejected. A check that cannot run (offline, server trouble) throws. */
   public async verifyApiKey(): Promise<boolean> {
     const result = await this.run(['verify', 'key']);
-    const parsed = JSON.parse(result.stdout) as { valid?: boolean };
+    // Exit 0 does not promise parseable stdout. Unreadable output means the
+    // check did not run — which is not the same as "the key is invalid", so
+    // it throws rather than reporting a verdict nobody established.
+    let parsed: { valid?: boolean };
+    try {
+      parsed = JSON.parse(result.stdout) as { valid?: boolean };
+    } catch {
+      throw new Error(`Unreadable response from 'tokitoki verify key': ${result.stdout.trim() || '(empty)'}`);
+    }
     return parsed.valid === true;
   }
 
@@ -204,9 +228,10 @@ export class TokitokiCli {
 
   private runBinary(executable: string, args: string[]): Promise<CommandResult> {
     const command = [executable, ...args].join(' ');
-    // Always pass the resolved server URL so the CLI's behavior is decided
-    // by this build, never by whatever environment the editor inherited.
-    const env = { ...process.env, TOKITOKI_BASE_URL: this.config.baseUrl };
+    // The server is fixed at build time and passed explicitly on every call:
+    // neither the ambient environment nor a user setting gets to redirect
+    // where the API key and usage data are sent.
+    const env = { ...process.env, TOKITOKI_BASE_URL };
 
     // No cwd: the CLI resolves everything it touches from os.UserHomeDir(),
     // so it has none. Pinning one to extensionPath only added a way to fail —
@@ -219,7 +244,7 @@ export class TokitokiCli {
         args,
         {
           env,
-          timeout: this.config.commandTimeoutSeconds * 1000,
+          timeout: COMMAND_TIMEOUT_MS,
           windowsHide: true,
           maxBuffer: 1024 * 1024,
         },

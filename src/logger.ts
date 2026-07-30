@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { LogLevelName } from './config';
+type LogLevelName = 'debug' | 'info' | 'warn' | 'error';
 
 const LOG_LEVELS: Record<LogLevelName, number> = {
   debug: 10,
@@ -9,13 +9,13 @@ const LOG_LEVELS: Record<LogLevelName, number> = {
   error: 40,
 };
 
+// Everything lands in the Tokitoki output channel, which nobody has open
+// unless they are debugging. There is nothing to spare the user from, so
+// there is nothing to configure.
+const LOG_LEVEL: LogLevelName = 'debug';
+
 export class Logger implements vscode.Disposable {
   private readonly outputChannel = vscode.window.createOutputChannel('Tokitoki');
-  private level: LogLevelName = 'info';
-
-  public setLevel(level: LogLevelName): void {
-    this.level = level;
-  }
 
   public debug(message: string): void {
     this.log('debug', message);
@@ -46,7 +46,7 @@ export class Logger implements vscode.Disposable {
   }
 
   private log(level: LogLevelName, message: string): void {
-    if (LOG_LEVELS[level] < LOG_LEVELS[this.level]) {
+    if (LOG_LEVELS[level] < LOG_LEVELS[LOG_LEVEL]) {
       return;
     }
     const timestamp = new Date().toISOString();

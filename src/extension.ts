@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { ActivityTracker, TrackedHeartbeat } from './activityTracker';
 import { ExtensionConfig, readConfig } from './config';
 import { Logger } from './logger';
+import { PROJECT_FILE_NAME, readProjectName, writeProjectName } from './projectFile';
 import { TOKITOKI_BASE_URL } from './serverUrl';
 import { maskApiKey, TokitokiCli, TokitokiCliError } from './tokitokiCli';
 
@@ -196,6 +197,70 @@ class TokitokiExtension implements vscode.Disposable {
     }
   }
 
+  /**
+   * Pins the project name the CLI reports for a folder by writing the first
+   * line of its `.tokitoki` file. Nothing to restart: every heartbeat resolves
+   * that file from disk, so the next one already carries the new name.
+   */
+  public async setProjectName(): Promise<void> {
+    const folder = await this.pickProjectFolder();
+    if (!folder) {
+      return;
+    }
+
+    // No file, or a blank first line, means the CLI is falling back to the
+    // folder name — so that is what is in effect and what the box shows.
+    const pinned = await readProjectName(folder.uri.fsPath);
+    const name = await vscode.window.showInputBox({
+      title: vscode.l10n.t('Tokitoki Project Name'),
+      prompt: vscode.l10n.t('Recorded for this folder in {0}, shared with every Tokitoki client.', PROJECT_FILE_NAME),
+      value: pinned || folder.name,
+      ignoreFocusOut: true,
+      validateInput: (value) => (value.trim() ? undefined : vscode.l10n.t('Project name is required')),
+    });
+    if (name === undefined) {
+      return;
+    }
+    const trimmed = name.trim();
+    // Accepting the folder-name default still writes the file — that is how
+    // the name survives a rename or a checkout under a different directory.
+    if (!trimmed || trimmed === pinned) {
+      return;
+    }
+
+    try {
+      await writeProjectName(folder.uri.fsPath, trimmed);
+    } catch (error) {
+      const message = vscode.l10n.t('Unable to write the {0} file in {1}.', PROJECT_FILE_NAME, folder.name);
+      this.logger.error(`${message} ${error instanceof Error ? error.message : String(error)}`);
+      const openLog = vscode.l10n.t('Open Log');
+      if (await vscode.window.showErrorMessage(message, openLog) === openLog) {
+        this.logger.show();
+      }
+      return;
+    }
+    this.logger.info(`Project name for ${folder.uri.fsPath} set to ${trimmed}`);
+    await vscode.window.showInformationMessage(vscode.l10n.t('Tokitoki project name set to {0}.', trimmed));
+  }
+
+  /** The folder whose `.tokitoki` file gets written. A multi-root workspace
+   * has to ask: guessing writes the name into the wrong project. */
+  private async pickProjectFolder(): Promise<vscode.WorkspaceFolder | undefined> {
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    if (folders.length === 0) {
+      await vscode.window.showWarningMessage(
+        vscode.l10n.t('Open a folder before setting a Tokitoki project name.'),
+      );
+      return undefined;
+    }
+    if (folders.length === 1) {
+      return folders[0];
+    }
+    return vscode.window.showWorkspaceFolderPick({
+      placeHolder: vscode.l10n.t('Select the folder to name'),
+    });
+  }
+
   public async openDashboard(): Promise<void> {
     // Signed-in when possible; anything that fails (no key, no network)
     // falls back to the plain server URL, which lands on the login page.
@@ -371,6 +436,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('tokitoki.openDashboard', () => controller?.openDashboard()),
     vscode.commands.registerCommand('tokitoki.setApiKey', () => controller?.setApiKey()),
     vscode.commands.registerCommand('tokitoki.showApiKeyStatus', () => controller?.showApiKeyStatus()),
+    vscode.commands.registerCommand('tokitoki.setProjectName', () => controller?.setProjectName()),
   );
 
   void controller.initialize();

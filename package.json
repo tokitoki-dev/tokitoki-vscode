@@ -66,6 +66,12 @@
         "title": "%command.showApiKeyStatus.title%",
         "category": "Tokitoki",
         "icon": "$(shield)"
+      },
+      {
+        "command": "tokitoki.setProjectName",
+        "title": "%command.setProjectName.title%",
+        "category": "Tokitoki",
+        "icon": "$(tag)"
       }
     ],
     "configuration": {

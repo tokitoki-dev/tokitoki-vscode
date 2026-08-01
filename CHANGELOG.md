@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- New command **Tokitoki: Set Project Name** writes the project's
+  `.tokitoki` file, so a folder reports the same name from every editor
+  and machine. It opens on the name in use today — the folder name until
+  you pin one — and leaves an existing branch override untouched.
+
 ## 0.1.4
 
 - Settings that did nothing for you are gone: `tokitoki.autoSync`,

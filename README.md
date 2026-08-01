@@ -39,6 +39,7 @@ into one dashboard at [tokitoki.dev](https://tokitoki.dev).
 | `Tokitoki: Set API Key` | Stores your API key for every Tokitoki client |
 | `Tokitoki: Open Dashboard` | Opens your web dashboard, signed in |
 | `Tokitoki: Show API Key Status` | Shows the configured key, masked |
+| `Tokitoki: Set Project Name` | Pins the name this folder reports, in `.tokitoki` |
 
 ## Settings
 
@@ -47,9 +48,12 @@ into one dashboard at [tokitoki.dev](https://tokitoki.dev).
 Tracking and uploading need no configuration — they start with the editor and
 run for the session.
 
-To pin a stable project name across machines and editors, put a `.tokitoki`
-file in the project root — the first line is the project name, an optional
-second line overrides the branch.
+To pin a stable project name across machines and editors, run **Tokitoki: Set
+Project Name** — it writes a `.tokitoki` file in the folder root, pre-filled
+with the name currently in use (the folder name, until you change it). The
+first line of that file is the project name, an optional second line overrides
+the branch; editing it by hand works just as well, and the next heartbeat
+picks it up.
 
 ## Privacy
 

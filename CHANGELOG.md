@@ -1,11 +1,21 @@
 # Changelog
 
-## Unreleased
+## 0.1.7
+
+- VS Code forks now report themselves by name. Cursor, Windsurf, and
+  VSCodium sessions were all recorded as "vscode"; each one now shows up
+  as itself on the dashboard.
+- Releases publish to Open VSX alongside the VS Code Marketplace, so the
+  extension is installable from editors that do not use the Microsoft
+  registry.
+
+## 0.1.5
 
 - New command **Tokitoki: Set Project Name** writes the project's
   `.tokitoki` file, so a folder reports the same name from every editor
   and machine. It opens on the name in use today — the folder name until
   you pin one — and leaves an existing branch override untouched.
+- Bundled CLI updated to v0.1.6.
 
 ## 0.1.4
 

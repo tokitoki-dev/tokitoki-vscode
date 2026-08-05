@@ -90,7 +90,12 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --generate-notes
 
+      # The two marketplaces publish independently: one refusing a version
+      # (already published, namespace missing) must not stop the other, or a
+      # retried release silently skips whichever registry comes second.
       - name: Publish to VS Code Marketplace
+        id: marketplace
+        continue-on-error: true
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
@@ -101,6 +106,8 @@ jobs:
           npx vsce publish --no-dependencies --packagePath tokitoki-vscode-*.vsix
 
       - name: Publish to Open VSX
+        id: openvsx
+        continue-on-error: true
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: |
@@ -108,9 +115,24 @@ jobs:
             echo "OVSX_PAT repository secret is not configured" >&2
             exit 1
           fi
-          npm install -g @wix-internal/ovsx || npm install -g ovsx
+          # Every platform VSIX is a separate publish; one rejection must not
+          # abandon the rest, so failures are collected and reported at the end.
+          failed=0
           for vsix in tokitoki-vscode-*.vsix; do
             echo "Publishing $vsix to Open VSX..."
-            ovsx publish "$vsix" -p "$OVSX_PAT"
+            npx --yes ovsx publish "$vsix" -p "$OVSX_PAT" || failed=1
           done
-          echo "✅ All VSIXes published to Open VSX"
+          exit "$failed"
+
+      # continue-on-error keeps a single registry failure from hiding the
+      # other's result, so the job's own verdict has to be restated here.
+      - name: Verify both registries published
+        run: |
+          marketplace='${{ steps.marketplace.outcome }}'
+          openvsx='${{ steps.openvsx.outcome }}'
+          echo "VS Code Marketplace: $marketplace"
+          echo "Open VSX:            $openvsx"
+          if [ "$marketplace" != success ] || [ "$openvsx" != success ]; then
+            echo "::error::A registry did not publish; see the step logs above." >&2
+            exit 1
+          fi

@@ -99,3 +99,18 @@ jobs:
             exit 1
           fi
           npx vsce publish --no-dependencies --packagePath tokitoki-vscode-*.vsix
+
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -z "$OVSX_PAT" ]; then
+            echo "OVSX_PAT repository secret is not configured" >&2
+            exit 1
+          fi
+          npm install -g @wix-internal/ovsx || npm install -g ovsx
+          for vsix in tokitoki-vscode-*.vsix; do
+            echo "Publishing $vsix to Open VSX..."
+            ovsx publish "$vsix" -p "$OVSX_PAT"
+          done
+          echo "✅ All VSIXes published to Open VSX"

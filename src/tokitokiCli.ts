@@ -22,6 +22,13 @@ export interface CommandResult {
 export interface HeartbeatArgs {
   entity: string;
   timeSeconds: number;
+  /**
+   * The editor this heartbeat came from, reported verbatim. The extension runs
+   * on every VS Code fork, so this is the fork's own name — "Cursor",
+   * "VSCodium" — not "vscode". Mapping those to display names belongs on the
+   * server, which can name a fork that did not exist when this build shipped.
+   */
+  editor: string;
   project?: string;
   projectFolder?: string;
   plugin?: string;
@@ -150,7 +157,7 @@ export class TokitokiCli {
       'heartbeat',
       '--entity', args.entity,
       '--time', args.timeSeconds.toFixed(3),
-      '--editor', 'vscode',
+      '--editor', args.editor,
     ];
     if (args.project) {
       command.push('--project', args.project);

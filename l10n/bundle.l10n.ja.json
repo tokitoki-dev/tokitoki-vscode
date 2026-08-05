@@ -13,6 +13,13 @@
   "Tokitoki API key ({0}) was rejected by the server. Set a new one?": "Tokitoki API キー（{0}）がサーバーに拒否されました。新しいキーを設定しますか？",
   "Tokitoki API key is not configured": "Tokitoki API キーが設定されていません",
   "Open Log": "ログを開く",
+  "Tokitoki Project Name": "Tokitoki プロジェクト名",
+  "Recorded for this folder in {0}, shared with every Tokitoki client.": "このフォルダーの {0} ファイルに記録され、すべての Tokitoki クライアントで共有されます。",
+  "Project name is required": "プロジェクト名は必須です",
+  "Tokitoki project name set to {0}.": "Tokitoki のプロジェクト名を {0} に設定しました。",
+  "Unable to write the {0} file in {1}.": "{1} に {0} ファイルを書き込めません。",
+  "Open a folder before setting a Tokitoki project name.": "Tokitoki のプロジェクト名を設定する前にフォルダーを開いてください。",
+  "Select the folder to name": "名前を設定するフォルダーを選択",
   "Tokitoki: tracking coding activity. Click to open your dashboard.": "Tokitoki：コーディング活動を記録中。クリックしてダッシュボードを開きます。",
   "Last heartbeat: {0}.": "最終ハートビート：{0}。",
   "Last AI usage sync: {0}.": "最終 AI 利用状況同期：{0}。"

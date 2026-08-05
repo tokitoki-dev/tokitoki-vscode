@@ -3,5 +3,6 @@
   "command.setApiKey.title": "API キーを設定",
   "command.openDashboard.title": "ダッシュボードを開く",
   "command.showApiKeyStatus.title": "API キーの状態を表示",
+  "command.setProjectName.title": "プロジェクト名を設定",
   "config.statusBar.enabled.description": "Tokitoki のステータスバー項目を表示します。"
 }

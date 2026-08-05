@@ -2,7 +2,7 @@
   "name": "tokitoki-vscode",
   "displayName": "Tokitoki",
   "description": "%extension.description%",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publisher": "tokitoki",
   "license": "MIT",
   "engines": {
@@ -66,6 +66,12 @@
         "title": "%command.showApiKeyStatus.title%",
         "category": "Tokitoki",
         "icon": "$(shield)"
+      },
+      {
+        "command": "tokitoki.setProjectName",
+        "title": "%command.setProjectName.title%",
+        "category": "Tokitoki",
+        "icon": "$(tag)"
       }
     ],
     "configuration": {

@@ -60,5 +60,9 @@ CI and releases bundle the CLI release pinned in
 `scripts/cli-release-pins.sh`; releases are cut by pushing a `vX.Y.Z` tag on
 `main`, which must match `package.json`. `main` only accepts merges from
 `dev` (`scripts/setup-branch-protection.sh` codifies the protection). The
-release workflow publishes the VSIX to a GitHub release and, when the
-`VSCE_PAT` repository secret is configured, to the VS Code Marketplace.
+release workflow publishes the VSIX to:
+- GitHub Releases
+- VS Code Marketplace (when `VSCE_PAT` secret is configured)
+- Open VSX (when `OVSX_PAT` secret is configured)
+
+See `RELEASE.md` for complete release procedures.

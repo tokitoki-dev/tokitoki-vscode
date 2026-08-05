@@ -7,6 +7,9 @@ import { PROJECT_FILE_NAME, readProjectName, writeProjectName } from './projectF
 import { TOKITOKI_BASE_URL } from './serverUrl';
 import { maskApiKey, TokitokiCli, TokitokiCliError } from './tokitokiCli';
 
+/** Reported when the host editor does not name itself. */
+const UNKNOWN_EDITOR = 'unknown';
+
 const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const LAST_UPDATE_CHECK_KEY = 'tokitoki.lastUpdateCheckAt';
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
@@ -312,6 +315,7 @@ class TokitokiExtension implements vscode.Disposable {
           timeSeconds: heartbeat.timeSeconds,
           project: heartbeat.project,
           projectFolder: heartbeat.projectFolder,
+          editor: this.editorName(),
           plugin: this.pluginUserAgent(),
           category: heartbeat.category,
           isWrite: heartbeat.isWrite,
@@ -368,6 +372,19 @@ class TokitokiExtension implements vscode.Disposable {
   private pluginUserAgent(): string {
     const extensionVersion = this.context.extension.packageJSON.version ?? '0.0.0';
     return `${vscode.env.appName}/${vscode.version} tokitoki-vscode/${extensionVersion}`;
+  }
+
+  /**
+   * The name of the editor running this extension, reported as-is.
+   *
+   * Every VS Code fork sets its own `appName` — "Cursor", "Windsurf",
+   * "VSCodium" — so this is the one place that knows which one it is. It is
+   * deliberately not mapped to a canonical name and does not fall back to
+   * "vscode": naming a fork we cannot identify after the product it forked
+   * from is worse than admitting we do not know.
+   */
+  private editorName(): string {
+    return vscode.env.appName?.trim() || UNKNOWN_EDITOR;
   }
 
   private async handleCommandError(error: unknown, message: string, notify: boolean): Promise<void> {

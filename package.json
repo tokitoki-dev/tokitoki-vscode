@@ -2,7 +2,7 @@
   "name": "tokitoki-vscode",
   "displayName": "Tokitoki",
   "description": "%extension.description%",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "publisher": "tokitoki",
   "license": "MIT",
   "engines": {
@@ -36,7 +36,8 @@
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node --test \"out/test/*.test.js\"",
     "package": "vsce package --no-dependencies --allow-missing-repository",
-    "generate": "node scripts/generate-server-url.js"
+    "generate": "node scripts/generate-server-url.js",
+    "publish:open-vsx": "sh scripts/publish-open-vsx.sh"
   },
   "contributes": {
     "icons": {

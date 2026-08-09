@@ -5,6 +5,7 @@ import { ExtensionConfig, readConfig } from './config';
 import { Logger } from './logger';
 import { PROJECT_FILE_NAME, readProjectName, writeProjectName } from './projectFile';
 import { TOKITOKI_BASE_URL } from './serverUrl';
+import { StatsViewProvider } from './statsView';
 import { maskApiKey, TokitokiCli, TokitokiCliError } from './tokitokiCli';
 
 /** Reported when the host editor does not name itself. */
@@ -15,6 +16,7 @@ const LAST_UPDATE_CHECK_KEY = 'tokitoki.lastUpdateCheckAt';
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 class TokitokiExtension implements vscode.Disposable {
+  public readonly statsView: StatsViewProvider;
   private config: ExtensionConfig = readConfig();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly statusBar: vscode.StatusBarItem;
@@ -39,6 +41,7 @@ class TokitokiExtension implements vscode.Disposable {
     this.statusBar.name = 'Tokitoki';
     this.statusBar.command = 'tokitoki.openDashboard';
     this.tracker = new ActivityTracker((heartbeat) => this.sendHeartbeat(heartbeat));
+    this.statsView = new StatsViewProvider(() => this.createCli(), this.logger);
 
     this.disposables.push(
       this.statusBar,
@@ -123,6 +126,9 @@ class TokitokiExtension implements vscode.Disposable {
         this.logCommandOutput(result.stdout, result.stderr);
         this.lastSyncAt = new Date();
         this.updateReadyStatus();
+        // A sync just scanned new events into the local database — the very
+        // numbers the stats view renders.
+        void this.statsView.refresh();
       } catch (error) {
         await this.handleCommandError(error, vscode.l10n.t('Tokitoki sync failed.'), false);
       }
@@ -156,6 +162,9 @@ class TokitokiExtension implements vscode.Disposable {
       const result = await this.createCli().setApiKey(apiKey.trim());
       this.logCommandOutput(result.stdout, result.stderr);
       this.updateReadyStatus();
+      // The stats view carries the setup call-to-action; drop it now that a
+      // key exists rather than at the next sync.
+      void this.statsView.refresh();
       // Sync starts before the notification: an awaited no-button toast only
       // resolves when the user dismisses it, so anything after it may never
       // run. And a user who just set a key wants data flowing now rather than
@@ -450,10 +459,12 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     controller,
+    vscode.window.registerWebviewViewProvider(StatsViewProvider.viewId, controller.statsView),
     vscode.commands.registerCommand('tokitoki.openDashboard', () => controller?.openDashboard()),
     vscode.commands.registerCommand('tokitoki.setApiKey', () => controller?.setApiKey()),
     vscode.commands.registerCommand('tokitoki.showApiKeyStatus', () => controller?.showApiKeyStatus()),
     vscode.commands.registerCommand('tokitoki.setProjectName', () => controller?.setProjectName()),
+    vscode.commands.registerCommand('tokitoki.refreshStats', () => controller?.statsView.refresh()),
   );
 
   void controller.initialize();

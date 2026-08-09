@@ -22,5 +22,17 @@
   "Select the folder to name": "选择要命名的文件夹",
   "Tokitoki: tracking coding activity. Click to open your dashboard.": "Tokitoki：正在记录编码活动。点击打开仪表板。",
   "Last heartbeat: {0}.": "最近一次心跳：{0}。",
-  "Last AI usage sync: {0}.": "最近一次 AI 使用同步：{0}。"
+  "Last AI usage sync: {0}.": "最近一次 AI 使用同步：{0}。",
+  "Usage stats need a newer Tokitoki CLI. It updates itself within a day, or run: tokitoki update": "使用统计需要新版 Tokitoki CLI。它会在一天内自动更新，也可手动运行：tokitoki update",
+  "These stats live only on this machine. Add your API key to sync them to your Tokitoki dashboard.": "这些统计仅保存在本机。添加 API 密钥即可同步到你的 Tokitoki 仪表板。",
+  "No activity recorded yet. Stats appear as you code and use AI tools.": "尚未记录任何活动。开始编码和使用 AI 工具后，统计会自动出现。",
+  "Active today": "今日活跃",
+  "Tokens today": "今日 Tokens",
+  "Active, {0} days": "{0} 天活跃",
+  "Tokens, {0} days": "{0} 天 Tokens",
+  "Daily active time": "每日活跃时长",
+  "Daily AI tokens": "每日 AI Tokens",
+  "Top models": "模型排行",
+  "Top projects": "项目排行",
+  "Open Dashboard": "打开仪表板"
 }

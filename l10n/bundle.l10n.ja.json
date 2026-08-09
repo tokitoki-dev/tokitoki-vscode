@@ -22,5 +22,17 @@
   "Select the folder to name": "名前を設定するフォルダーを選択",
   "Tokitoki: tracking coding activity. Click to open your dashboard.": "Tokitoki：コーディング活動を記録中。クリックしてダッシュボードを開きます。",
   "Last heartbeat: {0}.": "最終ハートビート：{0}。",
-  "Last AI usage sync: {0}.": "最終 AI 利用状況同期：{0}。"
+  "Last AI usage sync: {0}.": "最終 AI 利用状況同期：{0}。",
+  "Usage stats need a newer Tokitoki CLI. It updates itself within a day, or run: tokitoki update": "利用状況の統計には新しい Tokitoki CLI が必要です。1 日以内に自動更新されます。手動の場合は tokitoki update を実行してください",
+  "These stats live only on this machine. Add your API key to sync them to your Tokitoki dashboard.": "この統計はこのマシンにのみ保存されています。API キーを追加すると Tokitoki ダッシュボードに同期されます。",
+  "No activity recorded yet. Stats appear as you code and use AI tools.": "まだ活動が記録されていません。コーディングや AI ツールの利用を始めると統計が表示されます。",
+  "Active today": "今日の活動時間",
+  "Tokens today": "今日のトークン",
+  "Active, {0} days": "{0} 日間の活動時間",
+  "Tokens, {0} days": "{0} 日間のトークン",
+  "Daily active time": "日別の活動時間",
+  "Daily AI tokens": "日別の AI トークン",
+  "Top models": "モデル別ランキング",
+  "Top projects": "プロジェクト別ランキング",
+  "Open Dashboard": "ダッシュボードを開く"
 }

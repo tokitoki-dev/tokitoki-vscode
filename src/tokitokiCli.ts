@@ -39,6 +39,41 @@ export interface HeartbeatArgs {
   linesInFile?: number;
 }
 
+/** The JSON report of `tokitoki stats` (tokitoki-cli internal/usagestats).
+ * Computed entirely from the local event database — no API key, no network. */
+export interface StatsReport {
+  days: number;
+  from: string;
+  to: string;
+  totals: StatsTotals;
+  /** Dense: one entry per day of the window, zero-filled, oldest first. */
+  daily: StatsDaily[];
+  providers: StatsGroup[];
+  models: StatsGroup[];
+  projects: StatsGroup[];
+}
+
+export interface StatsTotals {
+  events: number;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  active_seconds: number;
+}
+
+export interface StatsDaily {
+  date: string;
+  events: number;
+  total_tokens: number;
+  active_seconds: number;
+}
+
+export interface StatsGroup {
+  name: string;
+  events: number;
+  total_tokens: number;
+}
+
 export class TokitokiCliError extends Error {
   public readonly stdout: string;
   public readonly stderr: string;
@@ -213,6 +248,18 @@ export class TokitokiCli {
   public async dashboardUrl(): Promise<string> {
     const result = await this.run(['get', 'dashboard-url']);
     return result.stdout.trim();
+  }
+
+  /** Local usage aggregates for the stats view. A CLI predating the `stats`
+   * command rejects it with a usage error, which surfaces here as a throw —
+   * the caller renders that as "update the CLI", not as an empty chart. */
+  public async stats(days: number): Promise<StatsReport> {
+    const result = await this.run(['stats', '--days', String(days)]);
+    try {
+      return JSON.parse(result.stdout) as StatsReport;
+    } catch {
+      throw new Error(`Unreadable response from 'tokitoki stats': ${result.stdout.trim() || '(empty)'}`);
+    }
   }
 
   private async binaryVersion(executable: string): Promise<number[] | undefined> {

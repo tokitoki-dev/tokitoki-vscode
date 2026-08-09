@@ -73,8 +73,47 @@
         "title": "%command.setProjectName.title%",
         "category": "Tokitoki",
         "icon": "$(tag)"
+      },
+      {
+        "command": "tokitoki.refreshStats",
+        "title": "%command.refreshStats.title%",
+        "category": "Tokitoki",
+        "icon": "$(refresh)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tokitoki",
+          "title": "Tokitoki",
+          "icon": "images/stats-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "tokitoki": [
+        {
+          "type": "webview",
+          "id": "tokitoki.statsView",
+          "name": "%view.stats.name%",
+          "icon": "images/stats-icon.svg"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "tokitoki.refreshStats",
+          "when": "view == tokitoki.statsView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tokitoki.openDashboard",
+          "when": "view == tokitoki.statsView",
+          "group": "navigation@2"
+        }
+      ]
+    },
     "configuration": {
       "title": "Tokitoki",
       "properties": {

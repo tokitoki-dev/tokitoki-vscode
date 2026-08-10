@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
+  <!-- The Tokitoki clock logo (see tokitoki-macos TokitokiLogo.imageset),
+       redrawn single-color for the activity bar. Strokes are thicker than the
+       source's 40/1024: at the bar's 24px they would render under one pixel. -->
+  <circle cx="512" cy="512" r="340" stroke="currentColor" stroke-width="76"/>
+  <path d="M346 385 L502 511" stroke="currentColor" stroke-width="76" stroke-linecap="round"/>
+</svg>

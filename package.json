@@ -86,7 +86,7 @@
         {
           "id": "tokitoki",
           "title": "Tokitoki",
-          "icon": "images/stats-icon.svg"
+          "icon": "images/tokitoki-logo.svg"
         }
       ]
     },
@@ -96,7 +96,7 @@
           "type": "webview",
           "id": "tokitoki.statsView",
           "name": "%view.stats.name%",
-          "icon": "images/stats-icon.svg"
+          "icon": "images/tokitoki-logo.svg"
         }
       ]
     },

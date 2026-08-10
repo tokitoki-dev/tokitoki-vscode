@@ -16,6 +16,23 @@ const targets = [
   ['windows', 'arm64', 'tokitoki-windows-arm64.exe'],
 ];
 
+// vsce target → asset filename, the same mapping stage-cli.sh applies. An
+// argument narrows the build to that one platform; no argument builds all six.
+const vsceTargets = {
+  'darwin-x64': 'tokitoki-darwin-amd64',
+  'darwin-arm64': 'tokitoki-darwin-arm64',
+  'linux-x64': 'tokitoki-linux-amd64',
+  'linux-arm64': 'tokitoki-linux-arm64',
+  'win32-x64': 'tokitoki-windows-amd64.exe',
+  'win32-arm64': 'tokitoki-windows-arm64.exe',
+};
+
+const only = process.argv[2];
+if (only && !vsceTargets[only]) {
+  throw new Error(`Unsupported target ${only}; expected one of: ${Object.keys(vsceTargets).join(', ')}`);
+}
+const selected = only ? targets.filter(([, , filename]) => filename === vsceTargets[only]) : targets;
+
 if (!fs.existsSync(path.join(cliDir, 'go.mod'))) {
   throw new Error(`Unable to find tokitoki-cli at ${cliDir}`);
 }
@@ -44,7 +61,7 @@ console.log(`Building tokitoki CLI ${version ?? 'dev'}`);
 
 fs.mkdirSync(outputDir, { recursive: true });
 
-for (const [goos, goarch, filename] of targets) {
+for (const [goos, goarch, filename] of selected) {
   const output = path.join(outputDir, filename);
   console.log(`Building ${filename}`);
   const result = childProcess.spawnSync(

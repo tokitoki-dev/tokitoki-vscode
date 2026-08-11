@@ -93,9 +93,17 @@ class TokitokiExtension implements vscode.Disposable {
   private async promptForApiKeyIfMissing(): Promise<void> {
     try {
       await this.createCli().getApiKey();
+      void this.updateApiKeyContext(true);
     } catch {
+      void this.updateApiKeyContext(false);
       await this.promptForApiKeyOnce();
     }
+  }
+
+  /** Drives the `tokitoki.apiKeyConfigured` when-clause context: UI that
+   * jumps to the online dashboard only appears once a key exists. */
+  private updateApiKeyContext(configured: boolean): Thenable<unknown> {
+    return vscode.commands.executeCommand('setContext', 'tokitoki.apiKeyConfigured', configured);
   }
 
   /** One automatic AI usage sync. Silent while already running or missing a
@@ -113,8 +121,10 @@ class TokitokiExtension implements vscode.Disposable {
       try {
         await this.createCli().getApiKey();
         this.apiKeyMissing = false;
+        void this.updateApiKeyContext(true);
       } catch {
         this.apiKeyMissing = true;
+        void this.updateApiKeyContext(false);
         return;
       }
 
@@ -162,8 +172,10 @@ class TokitokiExtension implements vscode.Disposable {
       const result = await this.createCli().setApiKey(apiKey.trim());
       this.logCommandOutput(result.stdout, result.stderr);
       this.updateReadyStatus();
-      // The stats view carries the setup call-to-action; drop it now that a
-      // key exists rather than at the next sync.
+      // The stats view carries the setup call-to-action and the dashboard
+      // button hides behind this context; flip both now that a key exists
+      // rather than at the next sync.
+      void this.updateApiKeyContext(true);
       void this.statsView.refresh();
       // Sync starts before the notification: an awaited no-button toast only
       // resolves when the user dismisses it, so anything after it may never
@@ -274,8 +286,27 @@ class TokitokiExtension implements vscode.Disposable {
   }
 
   public async openDashboard(): Promise<void> {
-    // Signed-in when possible; anything that fails (no key, no network)
-    // falls back to the plain server URL, which lands on the login page.
+    // No key means the dashboard has nothing of this user's to show, so the
+    // jump is gated: guide to the key instead of dumping them on a login
+    // page they cannot get past.
+    try {
+      await this.createCli().getApiKey();
+    } catch {
+      void this.updateApiKeyContext(false);
+      const setKey = vscode.l10n.t('Set API Key');
+      const selected = await vscode.window.showInformationMessage(
+        vscode.l10n.t('Set your API key first — the online dashboard shows data synced from this machine.'),
+        setKey,
+      );
+      if (selected === setKey) {
+        await this.setApiKey();
+      }
+      return;
+    }
+
+    // Signed-in when possible; a failure past this point (network, server)
+    // falls back to the plain server URL — the key exists, so the site can
+    // take it from there.
     try {
       const url = await this.createCli().dashboardUrl();
       if (url) {

@@ -51,6 +51,9 @@ export interface StatsReport {
   providers: StatsGroup[];
   models: StatsGroup[];
   projects: StatsGroup[];
+  /** Present when the report was requested with a project scope: the same
+   * shape narrowed to that project, from the same invocation. */
+  project?: StatsReport;
 }
 
 export interface StatsTotals {
@@ -72,6 +75,7 @@ export interface StatsGroup {
   name: string;
   events: number;
   total_tokens: number;
+  active_seconds: number;
 }
 
 export class TokitokiCliError extends Error {
@@ -250,11 +254,16 @@ export class TokitokiCli {
     return result.stdout.trim();
   }
 
-  /** Local usage aggregates for the stats view. A CLI predating the `stats`
-   * command rejects it with a usage error, which surfaces here as a throw —
-   * the caller renders that as "update the CLI", not as an empty chart. */
-  public async stats(days: number): Promise<StatsReport> {
-    const result = await this.run(['stats', '--days', String(days)]);
+  /** Local usage aggregates for the stats view; `project` narrows the report
+   * to one project name. A CLI predating the `stats` command rejects it with
+   * a usage error, which surfaces here as a throw — the caller renders that
+   * as "update the CLI", not as an empty chart. */
+  public async stats(days: number, project?: string): Promise<StatsReport> {
+    const args = ['stats', '--days', String(days)];
+    if (project) {
+      args.push('--project', project);
+    }
+    const result = await this.run(args);
     try {
       return JSON.parse(result.stdout) as StatsReport;
     } catch {

@@ -33,6 +33,16 @@
   "Daily active time": "日別の活動時間",
   "Daily AI tokens": "日別の AI トークン",
   "Top models": "モデル別ランキング",
-  "Top projects": "プロジェクト別ランキング",
-  "Open Dashboard": "ダッシュボードを開く"
+  "Open Dashboard": "ダッシュボードを開く",
+  "Coding Time": "コーディング時間",
+  "AI Usage": "AI 利用状況",
+  "All projects": "全プロジェクト",
+  "Projects by time": "プロジェクト別時間",
+  "No AI tool usage detected in the last {0} days.": "直近 {0} 日間に AI ツールの利用は検出されませんでした。",
+  "Connect to Tokitoki": "Tokitoki に接続",
+  "Create an account at tokitoki.dev": "tokitoki.dev でアカウントを作成",
+  "Copy your API key from Settings": "設定ページで API キーをコピー",
+  "Set it here — syncing starts right away": "ここで設定するとすぐに同期が始まります",
+  "Get an API key": "API キーを取得",
+  "Set your API key first — the online dashboard shows data synced from this machine.": "先に API キーを設定してください——オンラインダッシュボードにはこのマシンから同期されたデータが表示されます。"
 }

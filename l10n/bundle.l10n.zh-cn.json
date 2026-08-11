@@ -33,6 +33,16 @@
   "Daily active time": "每日活跃时长",
   "Daily AI tokens": "每日 AI Tokens",
   "Top models": "模型排行",
-  "Top projects": "项目排行",
-  "Open Dashboard": "打开仪表板"
+  "Open Dashboard": "打开仪表板",
+  "Coding Time": "编码时长",
+  "AI Usage": "AI 使用",
+  "All projects": "全部项目",
+  "Projects by time": "项目时长排行",
+  "No AI tool usage detected in the last {0} days.": "最近 {0} 天未检测到 AI 工具的使用记录。",
+  "Connect to Tokitoki": "连接 Tokitoki",
+  "Create an account at tokitoki.dev": "在 tokitoki.dev 注册账号",
+  "Copy your API key from Settings": "在设置页复制你的 API 密钥",
+  "Set it here — syncing starts right away": "在此设置，数据立即开始同步",
+  "Get an API key": "获取 API 密钥",
+  "Set your API key first — the online dashboard shows data synced from this machine.": "请先设置 API 密钥——线上仪表板展示的是从本机同步的数据。"
 }

@@ -109,7 +109,7 @@
         },
         {
           "command": "tokitoki.openDashboard",
-          "when": "view == tokitoki.statsView",
+          "when": "view == tokitoki.statsView && tokitoki.apiKeyConfigured",
           "group": "navigation@2"
         }
       ]

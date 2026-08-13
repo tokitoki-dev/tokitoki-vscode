@@ -106,9 +106,11 @@ class TokitokiExtension implements vscode.Disposable {
     return vscode.commands.executeCommand('setContext', 'tokitoki.apiKeyConfigured', configured);
   }
 
-  /** One automatic AI usage sync. Silent while already running or missing a
-   * key — the activation prompt already asks for one. Same rules as the
-   * macOS app's automatic sync. */
+  /** One automatic AI usage sync. Silent while already running — and it runs
+   * with or without a key: the CLI scans locally and skips only the upload
+   * when no key is set, which keeps the stats view fed and lets the CLI's
+   * install ping fire. Skipping the CLI here would make keyless installs
+   * invisible — exactly the installs the ping exists to count. */
   private async syncNow(): Promise<void> {
     if (this.syncRunning) {
       return;
@@ -118,6 +120,8 @@ class TokitokiExtension implements vscode.Disposable {
     // concurrent syncs.
     this.syncRunning = true;
     try {
+      // Key presence only drives the UI state (prompt, dashboard gating);
+      // it no longer decides whether the sync runs.
       try {
         await this.createCli().getApiKey();
         this.apiKeyMissing = false;
@@ -125,7 +129,6 @@ class TokitokiExtension implements vscode.Disposable {
       } catch {
         this.apiKeyMissing = true;
         void this.updateApiKeyContext(false);
-        return;
       }
 
       this.updateStatus('$(tokitoki-logo~spin) Tokitoki', vscode.l10n.t('Tokitoki AI usage sync in progress'));

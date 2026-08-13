@@ -186,9 +186,11 @@ export class TokitokiCli {
     return this.run(['update']);
   }
 
-  /** One AI usage scan-and-upload run over the CLI's default provider dirs. */
+  /** One AI usage scan-and-upload run over the CLI's default provider dirs.
+   * Spelled out as `sync`: a bare `tokitoki` prints usage and exits 0, which
+   * this extension would happily mistake for a successful sync. */
   public sync(): Promise<CommandResult> {
-    return this.run([]);
+    return this.run(['sync']);
   }
 
   public heartbeat(args: HeartbeatArgs): Promise<CommandResult> {

@@ -27,7 +27,12 @@ const vsceTargets = {
   'win32-arm64': 'tokitoki-windows-arm64.exe',
 };
 
-const only = process.argv[2];
+// `host` is the dev loop: build this machine's binary from the sibling
+// tokitoki-cli checkout and stage it straight into bin/, where a dev
+// extension host (preferBundled) picks it up. Node's platform-arch pair is
+// the vsce target name, so no extra mapping.
+const isHost = process.argv[2] === 'host';
+const only = isHost ? `${process.platform}-${process.arch}` : process.argv[2];
 if (only && !vsceTargets[only]) {
   throw new Error(`Unsupported target ${only}; expected one of: ${Object.keys(vsceTargets).join(', ')}`);
 }
@@ -52,7 +57,15 @@ function releaseVersion() {
   return /^v\d+\.\d+\.\d+$/.test(tag) ? tag.slice(1) : undefined;
 }
 
-const version = releaseVersion();
+// Host builds get a synthetic version that outranks every real release
+// (9999 major) and every earlier host build (epoch-seconds patch), so the
+// extension's ordinary bootstrap comparison installs each F5 build into the
+// shared slot — no dev-only code path in the extension. The server never
+// offers a release "newer" than 9999.x, so self-update leaves it alone.
+// Release builds are unchanged: exact tag or "dev".
+const version = isHost
+  ? `9999.0.${Math.floor(Date.now() / 1000)}`
+  : releaseVersion();
 let ldflags = '-s -w';
 if (version) {
   ldflags += ` -X github.com/tokitoki-dev/tokitoki-cli/internal/buildinfo.Version=${version}`;
@@ -84,5 +97,18 @@ for (const [goos, goarch, filename] of selected) {
   }
   if (goos !== 'windows') {
     fs.chmodSync(output, 0o755);
+  }
+
+  if (isHost) {
+    // Same layout stage-cli.sh produces: bin/ holds exactly one binary.
+    const binDir = path.join(extensionRoot, 'bin');
+    const staged = path.join(binDir, filename);
+    fs.rmSync(binDir, { recursive: true, force: true });
+    fs.mkdirSync(binDir);
+    fs.copyFileSync(output, staged);
+    if (goos !== 'windows') {
+      fs.chmodSync(staged, 0o755);
+    }
+    console.log(`Staged ${filename} into bin/`);
   }
 }

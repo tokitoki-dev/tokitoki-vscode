@@ -75,6 +75,13 @@ class TokitokiExtension implements vscode.Disposable {
     } catch (error) {
       this.logger.warn(`Failed to seed shared CLI: ${error instanceof Error ? error.message : String(error)}`);
     }
+    // Which binary actually answers is the first question in any debugging
+    // session — a dev host runs the bundled build, an install the shared one.
+    try {
+      this.logger.info(`CLI binary: ${this.createCli().resolveExecutable()}`);
+    } catch (error) {
+      this.logger.warn(`No usable CLI binary: ${error instanceof Error ? error.message : String(error)}`);
+    }
     void this.promptForApiKeyIfMissing();
 
     // Tracking and uploading is the whole point of the extension: it starts
@@ -139,11 +146,15 @@ class TokitokiExtension implements vscode.Disposable {
         this.logCommandOutput(result.stdout, result.stderr);
         this.lastSyncAt = new Date();
         this.updateReadyStatus();
-        // A sync just scanned new events into the local database — the very
-        // numbers the stats view renders.
-        void this.statsView.refresh();
       } catch (error) {
         await this.handleCommandError(error, vscode.l10n.t('Tokitoki sync failed.'), false);
+      } finally {
+        // Whether the scan succeeded or failed, it is no longer pending —
+        // a failed scan must not leave the panel claiming it is still
+        // looking. A sync also writes new events into the local database,
+        // which are the very numbers the view renders.
+        this.statsView.markScanned();
+        void this.statsView.refresh();
       }
     } finally {
       this.syncRunning = false;
@@ -267,6 +278,9 @@ class TokitokiExtension implements vscode.Disposable {
       return;
     }
     this.logger.info(`Project name for ${folder.uri.fsPath} set to ${trimmed}`);
+    // The panel labels its headline with this name, so it is stale the moment
+    // the file is written.
+    void this.statsView.refresh();
     await vscode.window.showInformationMessage(vscode.l10n.t('Tokitoki project name set to {0}.', trimmed));
   }
 
@@ -499,6 +513,11 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('tokitoki.showApiKeyStatus', () => controller?.showApiKeyStatus()),
     vscode.commands.registerCommand('tokitoki.setProjectName', () => controller?.setProjectName()),
     vscode.commands.registerCommand('tokitoki.refreshStats', () => controller?.statsView.refresh()),
+    // Settings live in the Settings editor, which already has search, sync and
+    // per-workspace overrides. This is a shortcut to them, filtered — not a
+    // second place to change them.
+    vscode.commands.registerCommand('tokitoki.openSettings', () =>
+      vscode.commands.executeCommand('workbench.action.openSettings', '@ext:tokitoki.tokitoki-vscode')),
   );
 
   void controller.initialize();

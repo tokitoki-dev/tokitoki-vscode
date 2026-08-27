@@ -3,14 +3,20 @@ import * as vscode from 'vscode';
 import { Logger } from './logger';
 import { readProjectName } from './projectFile';
 import { TOKITOKI_BASE_URL } from './serverUrl';
-import { StatsReport, TokitokiCli } from './tokitokiCli';
+import { StatsDaily, StatsReport, TokitokiCli } from './tokitokiCli';
 
 /** Days of local history the view renders. Matches what fits a sidebar. */
 const STATS_DAYS = 14;
 
-/** How many models/projects the top lists show. The full list is one click
- * away on the dashboard; a sidebar ranks, it does not enumerate. */
-const TOP_LIST_LIMIT = 5;
+/** How many rows each ranking shows. The full list is one click away on the
+ * dashboard; a sidebar ranks, it does not enumerate. */
+const TOP_PROJECTS = 5;
+const TOP_MODELS = 3;
+
+/** Selector value meaning "no project scope". A newline can appear in neither
+ * a folder name nor a pinned `.tokitoki` name — that file's first line is the
+ * name — so this never collides with a real project. */
+const ALL_PROJECTS = '\nall';
 
 // One color per identity, everywhere it appears: time is always green, AI
 // tokens always blue. A chart never mixes the two, so no legend is needed —
@@ -19,36 +25,59 @@ const TIME_COLOR = 'var(--vscode-charts-green, #89d185)';
 const AI_COLOR = 'var(--vscode-charts-blue, #3794ff)';
 
 /**
- * Sidebar webview rendering usage charts from `tokitoki stats` — local data
- * only, so a fresh install shows something real before an API key exists.
+ * Sidebar webview rendering usage from `tokitoki stats` — local data only, so
+ * it shows something real before an API key exists.
  *
- * Layout is time first, AI second: every user of an editor produces coding
- * time, while AI usage may be zero, and a panel that leads with its
- * emptiest section reads as broken. When the key is missing, the view
- * carries the setup call-to-action; that is deliberate: the charts
- * demonstrate the value, the button asks for the key.
+ * It serves two readers with one layout: today's numbers and a streak up top
+ * for the returning user, then the fortnight's rhythm and what the time and
+ * tokens went to — the part that gives a newcomer something to recognise in
+ * their own habits. A user with a key reads the top and closes it; a user
+ * without one reaches the CTA having already seen their own data. The full
+ * breakdown belongs on the dashboard, which is what the panel is here to sell.
  */
 export class StatsViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewId = 'tokitoki.statsView';
 
   private view: vscode.WebviewView | undefined;
   private refreshing = false;
+  private scanned = false;
+  /** The project the user picked from the selector, overriding the folder open
+   * in this window. `undefined` follows the window; `ALL_PROJECTS` is the
+   * explicit global view. */
+  private selected: string | undefined;
 
   constructor(
     private readonly createCli: () => TokitokiCli,
     private readonly logger: Logger,
   ) {}
 
+  /** The first scan has finished, so an empty report now means "nothing to
+   * show" rather than "not looked yet". Until this flips, an empty panel
+   * says it is still scanning — the history lives in the AI tools' own log
+   * directories and takes a moment to read. */
+  public markScanned(): void {
+    this.scanned = true;
+  }
+
   public resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
     view.webview.options = { enableScripts: true };
-    view.webview.onDidReceiveMessage((message: { command?: string }) => {
+    view.webview.onDidReceiveMessage((message: { command?: string; value?: string }) => {
       switch (message?.command) {
+        case 'selectProject':
+          // The empty value is the "follow this window" entry; anything else
+          // is a project name to pin, including the all-projects sentinel.
+          this.selected = message.value ? message.value : undefined;
+          void this.refresh();
+          break;
         case 'setApiKey':
           void vscode.commands.executeCommand('tokitoki.setApiKey');
           break;
         case 'openDashboard':
           void vscode.commands.executeCommand('tokitoki.openDashboard');
+          break;
+        case 'setProjectName':
+          void vscode.commands.executeCommand('tokitoki.setProjectName');
           break;
         case 'openWebsite':
           // Onboarding step 1 — the account/key page, not the dashboard.
@@ -86,11 +115,14 @@ export class StatsViewProvider implements vscode.WebviewViewProvider {
         apiKeyMissing = true;
       }
 
-      // The time zone is scoped to the project open in this window — the
-      // name the CLI's heartbeats record: the folder's pinned `.tokitoki`
-      // name when set, the folder name otherwise. One CLI call returns the
-      // global report with the project sub-report nested inside it.
-      const projectName = await this.currentProjectName();
+      // Which project the panel reads: the selector wins, otherwise the folder
+      // open in this window — the name the CLI's heartbeats record, being the
+      // folder's pinned `.tokitoki` name when set and the folder name
+      // otherwise. `ALL_PROJECTS` asks for no sub-report at all. One CLI call
+      // returns the global report with that sub-report nested inside it.
+      const windowProject = await this.currentProjectName();
+      const active = this.selected ?? windowProject;
+      const projectName = active === ALL_PROJECTS ? undefined : active;
       let report: StatsReport;
       try {
         report = await this.createCli().stats(STATS_DAYS, projectName);
@@ -106,7 +138,14 @@ export class StatsViewProvider implements vscode.WebviewViewProvider {
       }
 
       view.webview.html = this.page(
-        renderPanel(report, report.project, projectName, apiKeyMissing),
+        renderPanel({
+          report,
+          projectReport: report.project,
+          projectName,
+          windowProject,
+          apiKeyMissing,
+          scanned: this.scanned,
+        }),
         view.webview,
       );
     } finally {
@@ -142,188 +181,379 @@ const vscode = acquireVsCodeApi();
 for (const button of document.querySelectorAll('[data-command]')) {
   button.addEventListener('click', () => vscode.postMessage({ command: button.dataset.command }));
 }
+for (const select of document.querySelectorAll('[data-select="project"]')) {
+  select.addEventListener('change', () => vscode.postMessage({ command: 'selectProject', value: select.value }));
+}
 </script>
 </body>
 </html>`;
   }
 }
 
-function renderPanel(
-  report: StatsReport,
-  projectReport: StatsReport | undefined,
-  projectName: string | undefined,
-  apiKeyMissing: boolean,
-): string {
-  const sections: string[] = [];
-
-  if (report.totals.events === 0) {
-    sections.push(banner(vscode.l10n.t('No activity recorded yet. Stats appear as you code and use AI tools.')));
-  } else {
-    sections.push(renderTimeZone(report, projectReport, projectName));
-    sections.push('<div class="divider"></div>');
-    sections.push(renderAiZone(report));
-  }
-
-  // The panel ends on its one call to action: connect a key, or jump to the
-  // dashboard that key unlocked. The stats come first — they are the reason
-  // to bother connecting.
-  if (apiKeyMissing) {
-    sections.push('<div class="divider"></div>');
-    sections.push(onboardingCard());
-  } else {
-    sections.push(`
-<div class="footer">
-  <button data-command="openDashboard">${escapeHtml(vscode.l10n.t('Open Dashboard'))}</button>
-</div>`);
-  }
-
-  return sections.filter(Boolean).join('\n');
+interface PanelState {
+  report: StatsReport;
+  projectReport: StatsReport | undefined;
+  /** The project the report is scoped to, or undefined for all projects. */
+  projectName: string | undefined;
+  /** The project belonging to the folder open in this window, whether or not
+   * it is the one being shown. */
+  windowProject: string | undefined;
+  apiKeyMissing: boolean;
+  scanned: boolean;
 }
 
-/** Coding time, scoped to the current project when one is open. Global
- * context stays available through the projects-by-time ranking below. */
-function renderTimeZone(
+function renderPanel({
+  report,
+  projectReport,
+  projectName,
+  windowProject,
+  apiKeyMissing,
+  scanned,
+}: PanelState): string {
+  // Nothing recorded yet has two very different meanings, and the wrong one
+  // reads as a broken product on a fresh install: before the first scan the
+  // history simply has not been read, and saying so promises something is
+  // coming. Only after a completed scan is "no activity" the truth.
+  if (report.totals.events === 0) {
+    // Mid-scan the panel makes no pitch: the CTA sells keeping the history it
+    // is still reading, and asking before showing anything is the pitch this
+    // panel exists to avoid. Once the scan lands empty, the CTA is all there
+    // is to offer.
+    if (!scanned) {
+      return layout(banner(vscode.l10n.t('Reading your local coding and AI history…')), '');
+    }
+    return layout(
+      banner(vscode.l10n.t('No activity recorded yet. Stats appear as you code and use AI tools.')),
+      apiKeyMissing ? onboardingCard() : '',
+    );
+  }
+
+  // Headline first, one CTA pinned to the bottom. Everything between is the
+  // smallest set of numbers that makes the headline credible — the dashboard
+  // is where the full breakdown lives, and this panel exists to send people
+  // there.
+  //
+  // The headline reads the open project when there is one; everything below is
+  // global. That switch is one event, so it is announced once by a rule across
+  // the panel — repeating "all projects" on all three section headings says
+  // the same thing three times and reads as noise.
+  const scoped = Boolean(projectReport && projectName);
+  const body = [
+    projectSelector(report, projectName, windowProject),
+    renderHeadline(report, projectReport, projectName),
+    scoped ? scopeBreak() : '',
+    renderRhythm(report),
+    renderTopProjects(report),
+    renderTopModels(report),
+  ].filter(Boolean).join('\n');
+
+  return layout(body, apiKeyMissing ? onboardingCard() : dashboardFooter());
+}
+
+/**
+ * Data on top, the one call to action along the bottom edge. The spacer takes
+ * the slack, so the CTA sits at the bottom of a half-empty panel instead of
+ * floating directly under a two-line banner, and gets pushed down out of the
+ * way when the data is tall enough to scroll.
+ */
+function layout(body: string, cta: string): string {
+  return `
+<div class="content">
+${body}
+</div>
+${cta ? `<div class="pinned">\n${cta}\n</div>` : ''}`;
+}
+
+function dashboardFooter(): string {
+  return `
+<div class="footer">
+  <button data-command="openDashboard">${escapeHtml(vscode.l10n.t('Open Dashboard'))}</button>
+</div>`;
+}
+
+/**
+ * The scope picker. The folder open in this window leads the list — it is the
+ * one the reader is most likely to want and the panel's default — followed by
+ * every other project with recorded time, most active first.
+ *
+ * Selecting is a filter, not a preference: it lives for as long as the view
+ * does. Reopening the sidebar starts from the current window again, which is
+ * the behaviour someone switching between windows expects.
+ */
+function projectSelector(
+  report: StatsReport,
+  active: string | undefined,
+  windowProject: string | undefined,
+): string {
+  const ranked = [...report.projects]
+    .filter((group) => group.active_seconds > 0)
+    .sort((a, b) => b.active_seconds - a.active_seconds)
+    .map((group) => group.name);
+
+  // The window's own project heads the list even when it has no recorded time
+  // yet — a folder you just opened must still be selectable.
+  const names = [
+    ...(windowProject ? [windowProject] : []),
+    ...ranked.filter((name) => name !== windowProject),
+  ];
+  if (names.length === 0) {
+    return '';
+  }
+
+  // What is actually on screen, expressed as an option value: `active` is the
+  // resolved scope, so it already accounts for both the selection and the
+  // window fallback. Exactly one option can match it.
+  const current = active ?? ALL_PROJECTS;
+  const options = [
+    { value: ALL_PROJECTS, label: vscode.l10n.t('All projects') },
+    ...names.map((name) => ({
+      value: name,
+      label: name === windowProject ? vscode.l10n.t('{0} (this window)', name) : name,
+    })),
+  ];
+  const rendered = options
+    .map(({ value, label }) =>
+      `<option value="${escapeHtml(value)}"${value === current ? ' selected' : ''}>${escapeHtml(label)}</option>`)
+    .join('');
+  return `<select class="project-select" data-select="project" title="${escapeHtml(vscode.l10n.t('Choose which project the panel shows'))}">${rendered}</select>`;
+}
+
+/**
+ * Today, in two numbers. This is the whole panel for a returning user with a
+ * key: open the sidebar, see how the day is going, close it.
+ *
+ * With a project open the two tiles read that project; without one they read
+ * everything. Both tiles always share a single scope, named once above them —
+ * a headline mixing "this project" and "all projects" side by side states two
+ * facts the reader has no way to tell apart.
+ *
+ * The scope itself is named by the selector above, so the headline does not
+ * repeat it.
+ */
+function renderHeadline(
   report: StatsReport,
   projectReport: StatsReport | undefined,
   projectName: string | undefined,
 ): string {
   const scoped = projectReport ?? report;
-  const scopeLabel = projectReport && projectName ? projectName : vscode.l10n.t('All projects');
   const today = scoped.daily[scoped.daily.length - 1];
+  const scope = projectReport && projectName ? projectName : vscode.l10n.t('All projects');
 
-  const parts = [
-    zoneTitle(vscode.l10n.t('Coding Time'), scopeLabel),
-    `<div class="tiles">
-  ${tile(vscode.l10n.t('Active today'), formatDuration(today?.active_seconds ?? 0))}
-  ${tile(vscode.l10n.t('Active, {0} days', scoped.days), formatDuration(scoped.totals.active_seconds))}
-</div>`,
-    barChart(
-      vscode.l10n.t('Daily active time'),
-      scoped.daily.map((day) => ({
-        label: `${day.date} · ${formatDuration(day.active_seconds)}`,
-        value: day.active_seconds,
-      })),
-      TIME_COLOR,
-    ),
-    topList(
-      vscode.l10n.t('Projects by time'),
-      [...report.projects]
-        .filter((group) => group.active_seconds > 0)
-        .sort((a, b) => b.active_seconds - a.active_seconds)
-        .map((group) => ({
-          name: group.name,
-          value: group.active_seconds,
-          formatted: formatDuration(group.active_seconds),
-        })),
-      TIME_COLOR,
-    ),
-  ];
-  return parts.filter(Boolean).join('\n');
-}
+  // The streak counts global days: a run of coding is a fact about the person,
+  // not about whichever folder happens to be open in this window.
+  const streak = codingStreak(report.daily);
 
-/** AI usage is always global: models and tokens are not project-scoped in
- * most tools, and a zero-AI user gets one quiet line instead of dead charts. */
-function renderAiZone(report: StatsReport): string {
-  if (report.totals.total_tokens === 0) {
-    return [
-      zoneTitle(vscode.l10n.t('AI Usage'), ''),
-      banner(vscode.l10n.t('No AI tool usage detected in the last {0} days.', report.days)),
-    ].join('\n');
-  }
-
-  const today = report.daily[report.daily.length - 1];
-  return [
-    zoneTitle(vscode.l10n.t('AI Usage'), ''),
-    `<div class="tiles">
-  ${tile(vscode.l10n.t('Tokens today'), formatTokens(today?.total_tokens ?? 0))}
-  ${tile(vscode.l10n.t('Tokens, {0} days', report.days), formatTokens(report.totals.total_tokens))}
-</div>`,
-    barChart(
-      vscode.l10n.t('Daily AI tokens'),
-      report.daily.map((day) => ({
-        label: `${day.date} · ${formatTokens(day.total_tokens)}`,
-        value: day.total_tokens,
-      })),
-      AI_COLOR,
-    ),
-    topList(
-      vscode.l10n.t('Top models'),
-      report.models
-        .filter((group) => group.total_tokens > 0)
-        .map((group) => ({
-          name: group.name,
-          value: group.total_tokens,
-          formatted: formatTokens(group.total_tokens),
-        })),
-      AI_COLOR,
-    ),
-  ].filter(Boolean).join('\n');
-}
-
-/**
- * The keyless state, written as directions rather than mood. The three steps
- * are a real sequence — account, key, paste — so the numbering carries
- * information. "Set API Key" keeps the same name here, in the command
- * palette, and in the input box it opens.
- */
-function onboardingCard(): string {
-  const steps = [
-    vscode.l10n.t('Create an account at tokitoki.dev'),
-    vscode.l10n.t('Copy your API key from Settings'),
-    vscode.l10n.t('Set it here — syncing starts right away'),
-  ];
   return `
-<div class="cta">
-  <div class="cta-title">${escapeHtml(vscode.l10n.t('Connect to Tokitoki'))}</div>
-  <p>${escapeHtml(vscode.l10n.t('These stats live only on this machine. Add your API key to sync them to your Tokitoki dashboard.'))}</p>
-  <ol class="steps">
-    ${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('\n    ')}
-  </ol>
-  <button data-command="setApiKey">${escapeHtml(vscode.l10n.t('Set API Key'))}</button>
-  <button class="quiet" data-command="openWebsite">${escapeHtml(vscode.l10n.t('Get an API key'))}</button>
+<div class="headline">
+  <div class="tiles">
+    ${tile(vscode.l10n.t('Today'), formatDuration(today?.active_seconds ?? 0), TIME_COLOR)}
+    ${tile(vscode.l10n.t('Tokens'), formatTokens(today?.total_tokens ?? 0), AI_COLOR)}
+    ${tile(vscode.l10n.t('Streak'), streakValue(streak), '')}
+  </div>
 </div>`;
 }
 
-function zoneTitle(title: string, scope: string): string {
-  const chip = scope ? `<span class="zone-scope" title="${escapeHtml(scope)}">${escapeHtml(scope)}</span>` : '';
-  return `<div class="zone-title"><h2>${escapeHtml(title)}</h2>${chip}</div>`;
+/** Consecutive days with coding activity, counting back from the most recent
+ * day. Today not having started yet must not break a run, so a zero on the
+ * final day is skipped rather than ending the count at zero. */
+function codingStreak(daily: StatsDaily[]): number {
+  let streak = 0;
+  for (let i = daily.length - 1; i >= 0; i -= 1) {
+    if (daily[i].active_seconds > 0) {
+      streak += 1;
+    } else if (i !== daily.length - 1) {
+      break;
+    }
+  }
+  return streak;
 }
 
-function tile(label: string, value: string): string {
-  return `<div class="tile"><div class="tile-value">${escapeHtml(value)}</div><div class="tile-label">${escapeHtml(label)}</div></div>`;
+/** A streak that fills the whole window is a floor, not a total — the history
+ * simply does not reach further back, and "14d" would understate it. */
+function streakValue(streak: number): string {
+  const capped = streak >= STATS_DAYS;
+  return `${capped ? `${STATS_DAYS}+` : streak}<span class="unit">${escapeHtml(vscode.l10n.t('d'))}</span>`;
 }
 
-function barChart(title: string, bars: Array<{ label: string; value: number }>, color: string): string {
-  const max = Math.max(...bars.map((bar) => bar.value), 1);
-  const columns = bars
-    .map((bar) => {
-      // A day with activity always gets a visible sliver; only a true zero
-      // renders as empty. Rounding must not erase real work.
-      const percent = bar.value === 0 ? 0 : Math.max((bar.value / max) * 100, 4);
-      return `<div class="col" title="${escapeHtml(bar.label)}"><div class="bar" style="height:${percent.toFixed(1)}%;background:${color}"></div></div>`;
+/**
+ * The fortnight as a grid of days, shaded by how much was coded. A calendar
+ * grid says "you have a rhythm" at a glance where a bar chart says "here are
+ * fourteen numbers" — and it holds a full window in a fraction of the height,
+ * which is what buys room for the project ranking below.
+ *
+ * Drawn only over days that actually have history: a fresh install has two
+ * days, and padding the grid out would read as a chart of how little you have
+ * done. Global on purpose — the headline already covers the open project.
+ */
+function renderRhythm(report: StatsReport): string {
+  const days = daysWithHistory(report.daily);
+  if (days.length < 2) {
+    return '';
+  }
+  const max = Math.max(...days.map((day) => day.active_seconds), 1);
+  const cells = days
+    .map((day) => {
+      // Five steps: nothing, then four intensities. Any real activity clears
+      // level 1, so a short day never disappears into the empty shade.
+      const level = day.active_seconds === 0
+        ? 0
+        : Math.min(4, Math.ceil((day.active_seconds / max) * 4));
+      const label = `${day.date} · ${formatDuration(day.active_seconds)} · ${formatTokens(day.total_tokens)}`;
+      return `<div class="cell level-${level}" title="${escapeHtml(label)}"></div>`;
     })
     .join('');
-  return `<div class="section"><h3>${escapeHtml(title)}</h3><div class="chart">${columns}</div></div>`;
+  const total = formatDuration(sum(days.map((day) => day.active_seconds)));
+  return [
+    sectionTitle(vscode.l10n.t('Rhythm'), vscode.l10n.t('{0} · {1} days', total, days.length)),
+    `<div class="heatmap">${cells}</div>`,
+  ].join('\n');
 }
 
-function topList(
-  title: string,
+/**
+ * Where the time went, ranked. The total on the right is the count of every
+ * project touched, not the visible five: "31 total" is the fact a sidebar
+ * cannot show and the dashboard can, which makes the ranking both useful now
+ * and an argument for clicking through.
+ */
+function renderTopProjects(report: StatsReport): string {
+  const projects = [...report.projects]
+    .filter((group) => group.active_seconds > 0)
+    .sort((a, b) => b.active_seconds - a.active_seconds);
+  if (projects.length < 2) {
+    return '';
+  }
+  const top = projects.slice(0, TOP_PROJECTS);
+
+  // Two bars per project, each scaled against its own leader: time in green,
+  // tokens in blue. Read together they answer the question neither answers
+  // alone — where the hours went, and where the AI went. A project heavy on
+  // one and light on the other is the interesting case, and it only shows up
+  // when both bars share a row.
+  const maxTime = Math.max(...top.map((group) => group.active_seconds), 1);
+  const maxTokens = Math.max(...top.map((group) => group.total_tokens), 1);
+  const rows = top
+    .map((group) => {
+      const label = `${group.name} · ${formatDuration(group.active_seconds)} · ${formatTokens(group.total_tokens)}`;
+      return `
+<div class="row" title="${escapeHtml(label)}">
+  <div class="row-text">
+    <span class="row-name">${escapeHtml(group.name)}</span>
+    <span class="row-value">${escapeHtml(formatDuration(group.active_seconds))}</span>
+  </div>
+  <div class="row-track"><div class="row-fill" style="width:${percent(group.active_seconds, maxTime)}%;background:${TIME_COLOR}"></div></div>
+  <div class="row-track thin"><div class="row-fill" style="width:${percent(group.total_tokens, maxTokens)}%;background:${AI_COLOR}"></div></div>
+</div>`;
+    })
+    .join('');
+
+  return [
+    sectionTitle(vscode.l10n.t('Projects'), vscode.l10n.t('{0} total', projects.length)),
+    `<div class="rows">${rows}</div>`,
+  ].join('\n');
+}
+
+/**
+ * Which models the tokens went to — the fact users cannot get from their
+ * editor, and the clearest preview of what the dashboard does.
+ */
+function renderTopModels(report: StatsReport): string {
+  const models = report.models
+    .filter((group) => group.total_tokens > 0)
+    .sort((a, b) => b.total_tokens - a.total_tokens)
+    .slice(0, TOP_MODELS);
+  if (models.length === 0) {
+    return '';
+  }
+  return [
+    sectionTitle(vscode.l10n.t('Top models'), formatTokens(report.totals.total_tokens)),
+    rankedRows(
+      models.map((group) => ({
+        name: group.name,
+        value: group.total_tokens,
+        formatted: formatTokens(group.total_tokens),
+      })),
+      AI_COLOR,
+    ),
+  ].join('\n');
+}
+
+/** Trailing days are the window; leading zero days are just history the user
+ * does not have yet. Trimming the lead keeps a new install's chart honest
+ * without hiding a genuine idle day in the middle. */
+function daysWithHistory(daily: StatsDaily[]): StatsDaily[] {
+  const first = daily.findIndex((day) => day.active_seconds > 0 || day.total_tokens > 0);
+  return first === -1 ? [] : daily.slice(first);
+}
+
+/** A bar width, floored so a nonzero value always leaves a visible mark —
+ * rounding a real number down to an empty track is a lie. */
+function percent(value: number, max: number): string {
+  if (value === 0) {
+    return '0';
+  }
+  return Math.max((value / max) * 100, 2).toFixed(1);
+}
+
+function sum(values: number[]): number {
+  return values.reduce((total, value) => total + value, 0);
+}
+
+/**
+ * The keyless state: one line naming the limit the reader just hit, one button
+ * naming what lifts it. The numbers above already argued for the product, so
+ * the card does not argue again — and the paperwork to sign up belongs on the
+ * site, not in a sidebar.
+ *
+ * The primary button opens the site because that is where a keyless visitor
+ * can actually start: the key page sits behind a login they do not have yet.
+ * "Set API Key" keeps the same name in the command palette and input box.
+ */
+function onboardingCard(): string {
+  return `
+<div class="cta">
+  <p>${escapeHtml(vscode.l10n.t('Last {0} days, this machine only.', STATS_DAYS))}</p>
+  <button data-command="openWebsite">${escapeHtml(vscode.l10n.t('Keep your full history'))}</button>
+  <button class="quiet" data-command="setApiKey">${escapeHtml(vscode.l10n.t('I have an API key'))}</button>
+</div>`;
+}
+
+/** Rows sharing one scale, widest first. Names come from user data — project
+ * folders and model ids — so every one is escaped. */
+function rankedRows(
   rows: Array<{ name: string; value: number; formatted: string }>,
   color: string,
 ): string {
-  const top = rows.slice(0, TOP_LIST_LIMIT);
-  if (top.length === 0) {
-    return '';
-  }
-  const max = top[0].value;
-  const items = top
+  const max = Math.max(...rows.map((row) => row.value), 1);
+  const items = rows
     .map((row) => `
 <div class="row" title="${escapeHtml(`${row.name} · ${row.formatted}`)}">
   <div class="row-text"><span class="row-name">${escapeHtml(row.name)}</span><span class="row-value">${escapeHtml(row.formatted)}</span></div>
-  <div class="row-track"><div class="row-fill" style="width:${((row.value / max) * 100).toFixed(1)}%;background:${color}"></div></div>
+  <div class="row-track"><div class="row-fill" style="width:${percent(row.value, max)}%;background:${color}"></div></div>
 </div>`)
     .join('');
-  return `<div class="section"><h3>${escapeHtml(title)}</h3>${items}</div>`;
+  return `<div class="rows">${items}</div>`;
+}
+
+/** A section heading with its own total on the right, so each block states its
+ * scale without spending a tile on it. */
+function sectionTitle(title: string, total: string): string {
+  return `<div class="section-title"><h3>${escapeHtml(title)}</h3><span class="section-total">${escapeHtml(total)}</span></div>`;
+}
+
+/** The line where the panel stops talking about the open project and starts
+ * talking about everything. Only drawn when a project is actually scoped —
+ * with no folder open the whole panel is global and there is no switch to
+ * announce. */
+function scopeBreak(): string {
+  return `<div class="scope-break"><span>${escapeHtml(vscode.l10n.t('All projects'))}</span></div>`;
+}
+
+/** `value` is trusted markup — callers pass either an escaped number or a
+ * value with its own unit span. Everything derived from user data (project
+ * and model names) goes through the escaping helpers at its own call site. */
+function tile(label: string, value: string, color: string): string {
+  const style = color ? ` style="color:${color}"` : '';
+  return `<div class="tile"><div class="tile-value"${style}>${value}</div><div class="tile-label">${escapeHtml(label)}</div></div>`;
 }
 
 function banner(text: string): string {
@@ -370,51 +600,86 @@ function getNonce(): string {
 }
 
 const STYLE = `
+html, body { height: 100%; }
 body {
   font-family: var(--vscode-font-family);
   color: var(--vscode-foreground);
   font-size: var(--vscode-font-size);
   padding: 8px 12px;
-}
-h2 {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
+/* Takes the slack so the CTA rests on the bottom edge of a short panel, and
+   yields it back — scrolling normally — once the data outgrows the view. */
+.content { flex: 1 0 auto; }
+.pinned { flex-shrink: 0; padding-top: 12px; }
 h3 {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--vscode-descriptionForeground);
-  margin: 0 0 6px;
+  margin: 0;
 }
-.zone-title {
+.headline { margin-bottom: 20px; }
+/* Uses the editor's own dropdown colours so it reads as part of VS Code
+   rather than a web form dropped into the sidebar. */
+.project-select {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 3px 6px;
+  border: 1px solid var(--vscode-dropdown-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-dropdown-background, var(--vscode-editorWidget-background));
+  color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.project-select:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+.scope {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 6px;
+}
+.section-title {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 10px;
 }
-.zone-scope {
+/* A rule with the label sitting in it: the switch from one project to
+   everything, stated once. */
+.scope-break {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 16px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vscode-descriptionForeground);
+}
+.scope-break::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--vscode-widget-border, var(--vscode-editorWidget-background));
+}
+.section-total {
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex-shrink: 0;
 }
-.divider {
-  border-top: 1px solid var(--vscode-widget-border, var(--vscode-editorWidget-background));
-  margin: 16px 0;
-}
-.section { margin-bottom: 16px; }
 .tiles {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
 }
 .tile {
   background: var(--vscode-editorWidget-background);
@@ -423,20 +688,38 @@ h3 {
   padding: 8px 10px;
 }
 .tile-value { font-size: 16px; font-weight: 600; }
+.tile-value .unit { font-size: 11px; font-weight: 400; color: var(--vscode-descriptionForeground); margin-left: 1px; }
 .tile-label { font-size: 11px; color: var(--vscode-descriptionForeground); margin-top: 2px; }
-.chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 56px;
+/* Seven columns: a row is a week, so the grid reads as a calendar and the
+   weekly shape shows up without labelling a single axis. */
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 22px;
 }
-.col { flex: 1; height: 100%; display: flex; align-items: flex-end; }
-.bar { width: 100%; border-radius: 2px 2px 0 0; min-height: 0; }
-.row { margin-bottom: 6px; }
+.cell { aspect-ratio: 1; border-radius: 3px; background: var(--vscode-editorWidget-background); }
+/* Four steps of the same green the time tiles use, so intensity reads as
+   "more of that number" rather than as a new category. Opacity rather than
+   colour-mixing: it renders identically on every VS Code version and keeps
+   the theme's chart green as the single source of the hue. */
+.cell.level-1,
+.cell.level-2,
+.cell.level-3,
+.cell.level-4 { background: ${TIME_COLOR}; }
+.cell.level-1 { opacity: 0.28; }
+.cell.level-2 { opacity: 0.52; }
+.cell.level-3 { opacity: 0.76; }
+.rows { margin-bottom: 22px; }
+.row { margin-bottom: 8px; }
+.row:last-child { margin-bottom: 0; }
 .row-text { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin-bottom: 2px; }
 .row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-value { color: var(--vscode-descriptionForeground); flex-shrink: 0; }
 .row-track { height: 4px; border-radius: 2px; background: var(--vscode-editorWidget-background); }
+/* The token bar rides under the time bar, slimmer so the row still reads as
+   one entry with a primary measure rather than two competing charts. */
+.row-track.thin { height: 3px; margin-top: 2px; opacity: 0.85; }
 .row-fill { height: 100%; border-radius: 2px; }
 button {
   width: 100%;
@@ -455,17 +738,13 @@ button:hover { background: var(--vscode-button-hoverBackground); }
   border: 1px solid var(--vscode-widget-border, transparent);
   border-radius: 4px;
   padding: 12px;
-  margin-bottom: 16px;
 }
-.cta-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
-.cta p { margin: 0 0 8px; font-size: 12px; color: var(--vscode-descriptionForeground); }
-.steps {
-  margin: 0 0 12px;
-  padding-left: 18px;
-  font-size: 12px;
+.cta p {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  text-align: center;
 }
-.steps li { margin-bottom: 4px; }
-.steps li::marker { color: var(--vscode-descriptionForeground); }
 button.quiet {
   margin-top: 6px;
   background: transparent;
@@ -476,5 +755,4 @@ button.quiet:hover {
   text-decoration: underline;
 }
 .banner { color: var(--vscode-descriptionForeground); font-size: 12px; padding: 8px 0; }
-.footer { margin-top: 4px; }
 `;

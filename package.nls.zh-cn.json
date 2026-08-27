@@ -5,6 +5,7 @@
   "command.showApiKeyStatus.title": "查看 API 密钥状态",
   "command.setProjectName.title": "设置项目名称",
   "command.refreshStats.title": "刷新统计",
+  "command.openSettings.title": "设置",
   "view.stats.name": "使用统计",
   "config.statusBar.enabled.description": "显示 Tokitoki 状态栏项。"
 }

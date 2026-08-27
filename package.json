@@ -30,6 +30,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "build:agent": "node scripts/build-agent-binaries.js",
+    "build:agent:dev": "node scripts/build-agent-binaries.js host",
     "fetch:agent": "sh scripts/fetch-cli-release.sh",
     "compile": "npm run generate && tsc -p ./",
     "check": "npm run generate && tsc --noEmit -p ./",
@@ -79,6 +80,12 @@
         "title": "%command.refreshStats.title%",
         "category": "Tokitoki",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "tokitoki.openSettings",
+        "title": "%command.openSettings.title%",
+        "category": "Tokitoki",
+        "icon": "$(gear)"
       }
     ],
     "viewsContainers": {
@@ -111,6 +118,26 @@
           "command": "tokitoki.openDashboard",
           "when": "view == tokitoki.statsView && tokitoki.apiKeyConfigured",
           "group": "navigation@2"
+        },
+        {
+          "command": "tokitoki.setProjectName",
+          "when": "view == tokitoki.statsView",
+          "group": "1_tokitoki@1"
+        },
+        {
+          "command": "tokitoki.showApiKeyStatus",
+          "when": "view == tokitoki.statsView",
+          "group": "1_tokitoki@2"
+        },
+        {
+          "command": "tokitoki.setApiKey",
+          "when": "view == tokitoki.statsView",
+          "group": "1_tokitoki@3"
+        },
+        {
+          "command": "tokitoki.openSettings",
+          "when": "view == tokitoki.statsView",
+          "group": "9_tokitoki@1"
         }
       ]
     },

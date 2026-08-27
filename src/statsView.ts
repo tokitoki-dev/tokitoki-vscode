@@ -5,8 +5,13 @@ import { readProjectName } from './projectFile';
 import { TOKITOKI_BASE_URL } from './serverUrl';
 import { StatsDaily, StatsReport, TokitokiCli } from './tokitokiCli';
 
-/** Days of local history the view renders. Matches what fits a sidebar. */
+/** Days of local history the view fetches. Wider than the chart shows: the
+ * streak needs history behind it, and the rankings read the same window. */
 const STATS_DAYS = 14;
+
+/** Days the chart plots. A week is what a person can hold in their head and
+ * what labels cleanly at sidebar width. */
+const TREND_DAYS = 7;
 
 /** How many rows each ranking shows. The full list is one click away on the
  * dashboard; a sidebar ranks, it does not enumerate. */
@@ -191,9 +196,12 @@ for (const select of document.querySelectorAll('[data-select="project"]')) {
 }
 
 interface PanelState {
+  /** Every project, always — the selector lists from this even while the panel
+   * shows one project. */
   report: StatsReport;
+  /** The same window narrowed to one project, when one is selected. */
   projectReport: StatsReport | undefined;
-  /** The project the report is scoped to, or undefined for all projects. */
+  /** The project the panel is scoped to, or undefined for all projects. */
   projectName: string | undefined;
   /** The project belonging to the folder open in this window, whether or not
    * it is the one being shown. */
@@ -220,48 +228,46 @@ function renderPanel({
     // panel exists to avoid. Once the scan lands empty, the CTA is all there
     // is to offer.
     if (!scanned) {
-      return layout(banner(vscode.l10n.t('Reading your local coding and AI history…')), '');
+      return layout([banner(vscode.l10n.t('Reading your local coding and AI history…'))]);
     }
-    return layout(
+    return layout([
       banner(vscode.l10n.t('No activity recorded yet. Stats appear as you code and use AI tools.')),
       apiKeyMissing ? onboardingCard() : '',
-    );
+    ].filter(Boolean));
   }
 
-  // Headline first, one CTA pinned to the bottom. Everything between is the
-  // smallest set of numbers that makes the headline credible — the dashboard
-  // is where the full breakdown lives, and this panel exists to send people
-  // there.
-  //
-  // The headline reads the open project when there is one; everything below is
-  // global. That switch is one event, so it is announced once by a rule across
-  // the panel — repeating "all projects" on all three section headings says
-  // the same thing three times and reads as noise.
-  const scoped = Boolean(projectReport && projectName);
-  const body = [
+  // The selector sets the scope for the whole panel, so every section reads
+  // one report and none of them has to explain which numbers it is showing.
+  // Picking a project also makes the projects ranking pointless — it would be
+  // a chart of one bar — so it only appears in the all-projects view.
+  const scope = projectReport ?? report;
+  const blocks = [
     projectSelector(report, projectName, windowProject),
-    renderHeadline(report, projectReport, projectName),
-    scoped ? scopeBreak() : '',
-    renderRhythm(report),
-    renderTopProjects(report),
-    renderTopModels(report),
-  ].filter(Boolean).join('\n');
+    renderHeadline(scope),
+    renderWeek(scope),
+    projectReport ? '' : renderTopProjects(report),
+    renderTopModels(scope),
+    apiKeyMissing ? onboardingCard() : dashboardFooter(),
+  ].filter(Boolean);
 
-  return layout(body, apiKeyMissing ? onboardingCard() : dashboardFooter());
+  return layout(blocks);
 }
 
 /**
- * Data on top, the one call to action along the bottom edge. The spacer takes
- * the slack, so the CTA sits at the bottom of a half-empty panel instead of
- * floating directly under a two-line banner, and gets pushed down out of the
- * way when the data is tall enough to scroll.
+ * One column of sections, the last of which is the call to action — it follows
+ * the data instead of being pinned to the bottom edge, so it reads as the end
+ * of the panel rather than a bar floating over it.
+ *
+ * Gaps grow with the panel's height, within a limit, so a tall sidebar spreads
+ * the sections out instead of stacking them under one long stretch of empty.
+ * On a short panel the gaps collapse and the view scrolls — spacing is what
+ * gives, never the content.
  */
-function layout(body: string, cta: string): string {
+function layout(blocks: string[]): string {
   return `
 <div class="content">
-${body}
-</div>
-${cta ? `<div class="pinned">\n${cta}\n</div>` : ''}`;
+${blocks.map((block) => `<div class="block">\n${block}\n</div>`).join('\n')}
+</div>`;
 }
 
 function dashboardFooter(): string {
@@ -319,28 +325,12 @@ function projectSelector(
 }
 
 /**
- * Today, in two numbers. This is the whole panel for a returning user with a
- * key: open the sidebar, see how the day is going, close it.
- *
- * With a project open the two tiles read that project; without one they read
- * everything. Both tiles always share a single scope, named once above them —
- * a headline mixing "this project" and "all projects" side by side states two
- * facts the reader has no way to tell apart.
- *
- * The scope itself is named by the selector above, so the headline does not
- * repeat it.
+ * Today, in three numbers. This is the whole panel for a returning user with a
+ * key: open the sidebar, see how the day is going, close it. Which project
+ * these describe is the selector's business, so the headline never repeats it.
  */
-function renderHeadline(
-  report: StatsReport,
-  projectReport: StatsReport | undefined,
-  projectName: string | undefined,
-): string {
-  const scoped = projectReport ?? report;
-  const today = scoped.daily[scoped.daily.length - 1];
-  const scope = projectReport && projectName ? projectName : vscode.l10n.t('All projects');
-
-  // The streak counts global days: a run of coding is a fact about the person,
-  // not about whichever folder happens to be open in this window.
+function renderHeadline(report: StatsReport): string {
+  const today = report.daily[report.daily.length - 1];
   const streak = codingStreak(report.daily);
 
   return `
@@ -376,37 +366,46 @@ function streakValue(streak: number): string {
 }
 
 /**
- * The fortnight as a grid of days, shaded by how much was coded. A calendar
- * grid says "you have a rhythm" at a glance where a bar chart says "here are
- * fourteen numbers" — and it holds a full window in a fraction of the height,
- * which is what buys room for the project ranking below.
- *
- * Drawn only over days that actually have history: a fresh install has two
- * days, and padding the grid out would read as a chart of how little you have
- * done. Global on purpose — the headline already covers the open project.
+ * The past week as bars, one per day, labelled with the weekday. Height is
+ * directly comparable — twice as tall is twice as long — where a shaded grid
+ * makes the reader decode a colour scale before learning anything. Seven days
+ * is what a person can hold in their head, and it labels cleanly at sidebar
+ * width; the longer history is the dashboard's job.
  */
-function renderRhythm(report: StatsReport): string {
-  const days = daysWithHistory(report.daily);
+function renderWeek(report: StatsReport): string {
+  const days = report.daily.slice(-TREND_DAYS);
   if (days.length < 2) {
     return '';
   }
   const max = Math.max(...days.map((day) => day.active_seconds), 1);
-  const cells = days
-    .map((day) => {
-      // Five steps: nothing, then four intensities. Any real activity clears
-      // level 1, so a short day never disappears into the empty shade.
-      const level = day.active_seconds === 0
-        ? 0
-        : Math.min(4, Math.ceil((day.active_seconds / max) * 4));
+  const columns = days
+    .map((day, index) => {
       const label = `${day.date} · ${formatDuration(day.active_seconds)} · ${formatTokens(day.total_tokens)}`;
-      return `<div class="cell level-${level}" title="${escapeHtml(label)}"></div>`;
+      const isToday = index === days.length - 1;
+      return `
+<div class="day${isToday ? ' today' : ''}" title="${escapeHtml(label)}">
+  <div class="day-bar"><div class="day-fill" style="height:${percent(day.active_seconds, max)}%"></div></div>
+  <div class="day-name">${escapeHtml(weekdayInitial(day.date))}</div>
+</div>`;
     })
     .join('');
   const total = formatDuration(sum(days.map((day) => day.active_seconds)));
   return [
-    sectionTitle(vscode.l10n.t('Rhythm'), vscode.l10n.t('{0} · {1} days', total, days.length)),
-    `<div class="heatmap">${cells}</div>`,
+    sectionTitle(vscode.l10n.t('Last {0} days', days.length), total),
+    `<div class="week">${columns}</div>`,
   ].join('\n');
+}
+
+/** The weekday letter for a `YYYY-MM-DD` day, in the user's locale. Parsed as
+ * local time — `new Date('2026-08-27')` is UTC midnight, which lands on the
+ * previous day for anyone west of Greenwich and would label every bar wrong. */
+function weekdayInitial(date: string): string {
+  const [year, month, day] = date.split('-').map(Number);
+  if (!year || !month || !day) {
+    return '';
+  }
+  return new Date(year, month - 1, day)
+    .toLocaleDateString(vscode.env.language, { weekday: 'narrow' });
 }
 
 /**
@@ -477,14 +476,6 @@ function renderTopModels(report: StatsReport): string {
   ].join('\n');
 }
 
-/** Trailing days are the window; leading zero days are just history the user
- * does not have yet. Trimming the lead keeps a new install's chart honest
- * without hiding a genuine idle day in the middle. */
-function daysWithHistory(daily: StatsDaily[]): StatsDaily[] {
-  const first = daily.findIndex((day) => day.active_seconds > 0 || day.total_tokens > 0);
-  return first === -1 ? [] : daily.slice(first);
-}
-
 /** A bar width, floored so a nonzero value always leaves a visible mark —
  * rounding a real number down to an empty track is a lie. */
 function percent(value: number, max: number): string {
@@ -540,14 +531,6 @@ function sectionTitle(title: string, total: string): string {
   return `<div class="section-title"><h3>${escapeHtml(title)}</h3><span class="section-total">${escapeHtml(total)}</span></div>`;
 }
 
-/** The line where the panel stops talking about the open project and starts
- * talking about everything. Only drawn when a project is actually scoped —
- * with no folder open the whole panel is global and there is no switch to
- * announce. */
-function scopeBreak(): string {
-  return `<div class="scope-break"><span>${escapeHtml(vscode.l10n.t('All projects'))}</span></div>`;
-}
-
 /** `value` is trusted markup — callers pass either an escaped number or a
  * value with its own unit span. Everything derived from user data (project
  * and model names) goes through the escaping helpers at its own call site. */
@@ -600,21 +583,22 @@ function getNonce(): string {
 }
 
 const STYLE = `
-html, body { height: 100%; }
 body {
   font-family: var(--vscode-font-family);
   color: var(--vscode-foreground);
   font-size: var(--vscode-font-size);
-  padding: 8px 12px;
+  padding: 8px 12px 16px;
   margin: 0;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
 }
 /* Takes the slack so the CTA rests on the bottom edge of a short panel, and
    yields it back — scrolling normally — once the data outgrows the view. */
-.content { flex: 1 0 auto; }
-.pinned { flex-shrink: 0; padding-top: 12px; }
+/* One column of sections. The gap grows a little with the panel's height so a
+   tall sidebar does not stack everything at the top, but stops well short of
+   stranding the blocks as unrelated islands. */
+.content { display: flex; flex-direction: column; }
+.block + .block { margin-top: min(4vh, 34px); }
+.block > *:last-child { margin-bottom: 0; }
 h3 {
   font-size: 11px;
   font-weight: 600;
@@ -623,7 +607,7 @@ h3 {
   color: var(--vscode-descriptionForeground);
   margin: 0;
 }
-.headline { margin-bottom: 20px; }
+
 /* Uses the editor's own dropdown colours so it reads as part of VS Code
    rather than a web form dropped into the sidebar. */
 .project-select {
@@ -654,23 +638,6 @@ h3 {
   gap: 8px;
   margin-bottom: 10px;
 }
-/* A rule with the label sitting in it: the switch from one project to
-   everything, stated once. */
-.scope-break {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 4px 0 16px;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--vscode-descriptionForeground);
-}
-.scope-break::after {
-  content: '';
-  flex: 1;
-  border-top: 1px solid var(--vscode-widget-border, var(--vscode-editorWidget-background));
-}
 .section-total {
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
@@ -690,27 +657,28 @@ h3 {
 .tile-value { font-size: 16px; font-weight: 600; }
 .tile-value .unit { font-size: 11px; font-weight: 400; color: var(--vscode-descriptionForeground); margin-left: 1px; }
 .tile-label { font-size: 11px; color: var(--vscode-descriptionForeground); margin-top: 2px; }
-/* Seven columns: a row is a week, so the grid reads as a calendar and the
-   weekly shape shows up without labelling a single axis. */
-.heatmap {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+/* One column per day, bar plus label. Heights are comparable directly, so
+   there is no scale to decode. */
+.week {
+  display: flex;
+  align-items: flex-end;
   gap: 4px;
-  margin-bottom: 22px;
 }
-.cell { aspect-ratio: 1; border-radius: 3px; background: var(--vscode-editorWidget-background); }
-/* Four steps of the same green the time tiles use, so intensity reads as
-   "more of that number" rather than as a new category. Opacity rather than
-   colour-mixing: it renders identically on every VS Code version and keeps
-   the theme's chart green as the single source of the hue. */
-.cell.level-1,
-.cell.level-2,
-.cell.level-3,
-.cell.level-4 { background: ${TIME_COLOR}; }
-.cell.level-1 { opacity: 0.28; }
-.cell.level-2 { opacity: 0.52; }
-.cell.level-3 { opacity: 0.76; }
-.rows { margin-bottom: 22px; }
+.day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.day-bar { width: 100%; height: 72px; display: flex; align-items: flex-end; }
+.day-fill {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: ${TIME_COLOR};
+  opacity: 0.55;
+}
+.day-name { font-size: 10px; color: var(--vscode-descriptionForeground); }
+/* Today is the bar the reader is looking for, so it alone is at full strength
+   and its label is not dimmed. */
+.day.today .day-fill { opacity: 1; }
+.day.today .day-name { color: var(--vscode-foreground); }
+
 .row { margin-bottom: 8px; }
 .row:last-child { margin-bottom: 0; }
 .row-text { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin-bottom: 2px; }

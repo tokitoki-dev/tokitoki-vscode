@@ -66,10 +66,6 @@ function releaseVersion() {
 const version = isHost
   ? `9999.0.${Math.floor(Date.now() / 1000)}`
   : releaseVersion();
-let ldflags = '-s -w';
-if (version) {
-  ldflags += ` -X github.com/tokitoki-dev/tokitoki-cli/internal/buildinfo.Version=${version}`;
-}
 console.log(`Building tokitoki CLI ${version ?? 'dev'}`);
 
 fs.mkdirSync(outputDir, { recursive: true });
@@ -77,20 +73,25 @@ fs.mkdirSync(outputDir, { recursive: true });
 for (const [goos, goarch, filename] of selected) {
   const output = path.join(outputDir, filename);
   console.log(`Building ${filename}`);
-  const result = childProcess.spawnSync(
-    'go',
-    ['build', '-trimpath', `-ldflags=${ldflags}`, '-o', output, './cmd/tokitoki'],
-    {
-      cwd: cliDir,
-      env: {
-        ...process.env,
-        CGO_ENABLED: '0',
-        GOOS: goos,
-        GOARCH: goarch,
-      },
-      stdio: 'inherit',
-    },
-  );
+  // Built through the CLI's own Makefile rather than a `go build` line here.
+  // That Makefile decides what a locally built binary is — the version stamp
+  // and, more importantly, the data directory it owns. Spelling out the
+  // compile here meant this script had to remember those stamps too, and a
+  // binary that forgot the data directory would quietly read and write the
+  // state of the user's installed CLI.
+  const makeArgs = [
+    'agent-binary',
+    `GOOS=${goos}`,
+    `GOARCH=${goarch}`,
+    `OUTPUT=${output}`,
+  ];
+  if (version) {
+    makeArgs.push(`VERSION=${version}`);
+  }
+  const result = childProcess.spawnSync('make', makeArgs, {
+    cwd: cliDir,
+    stdio: 'inherit',
+  });
 
   if (result.status !== 0) {
     process.exit(result.status ?? 1);

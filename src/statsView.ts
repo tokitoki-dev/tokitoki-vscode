@@ -5,13 +5,10 @@ import { readProjectName } from './projectFile';
 import { TOKITOKI_BASE_URL } from './serverUrl';
 import { StatsDaily, StatsReport, TokitokiCli } from './tokitokiCli';
 
-/** Days of local history the view fetches. Wider than the chart shows: the
- * streak needs history behind it, and the rankings read the same window. */
-const STATS_DAYS = 14;
-
-/** Days the chart plots. A week is what a person can hold in their head and
- * what labels cleanly at sidebar width. */
-const TREND_DAYS = 7;
+/** Days of local history the panel reads, and the only window it ever shows.
+ * A week is what a person can hold in their head and what labels cleanly at
+ * sidebar width; anything longer is the dashboard's job, not a sidebar's. */
+const STATS_DAYS = 7;
 
 /** How many rows each ranking shows. The full list is one click away on the
  * dashboard; a sidebar ranks, it does not enumerate. */
@@ -34,11 +31,11 @@ const AI_COLOR = 'var(--vscode-charts-blue, #3794ff)';
  * it shows something real before an API key exists.
  *
  * It serves two readers with one layout: today's numbers and a streak up top
- * for the returning user, then the fortnight's rhythm and what the time and
- * tokens went to — the part that gives a newcomer something to recognise in
- * their own habits. A user with a key reads the top and closes it; a user
- * without one reaches the CTA having already seen their own data. The full
- * breakdown belongs on the dashboard, which is what the panel is here to sell.
+ * for the returning user, then the week's rhythm and what the time and tokens
+ * went to — the part that gives a newcomer something to recognise in their own
+ * habits. Both readers end at the same card, because both have the same next
+ * step: the week is all a sidebar shows, and the full breakdown belongs on the
+ * dashboard, which is what the panel is here to sell.
  */
 export class StatsViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewId = 'tokitoki.statsView';
@@ -223,17 +220,17 @@ function renderPanel({
   // history simply has not been read, and saying so promises something is
   // coming. Only after a completed scan is "no activity" the truth.
   if (report.totals.events === 0) {
-    // Mid-scan the panel makes no pitch: the CTA sells keeping the history it
-    // is still reading, and asking before showing anything is the pitch this
-    // panel exists to avoid. Once the scan lands empty, the CTA is all there
-    // is to offer.
+    // Mid-scan there is nothing to point at yet: the card sends the reader to
+    // a dashboard for more than the panel shows, and the panel does not yet
+    // know what it shows. Once the scan lands empty, the card is all there is
+    // to offer.
     if (!scanned) {
       return layout([banner(vscode.l10n.t('Reading your local coding and AI history…'))]);
     }
     return layout([
       banner(vscode.l10n.t('No activity recorded yet. Stats appear as you code and use AI tools.')),
-      apiKeyMissing ? onboardingCard() : '',
-    ].filter(Boolean));
+      dashboardCard(apiKeyMissing),
+    ]);
   }
 
   // The selector sets the scope for the whole panel, so every section reads
@@ -247,7 +244,7 @@ function renderPanel({
     renderWeek(scope),
     projectReport ? '' : renderTopProjects(report),
     renderTopModels(scope),
-    apiKeyMissing ? onboardingCard() : dashboardFooter(),
+    dashboardCard(apiKeyMissing),
   ].filter(Boolean);
 
   return layout(blocks);
@@ -267,13 +264,6 @@ function layout(blocks: string[]): string {
   return `
 <div class="content">
 ${blocks.map((block) => `<div class="block">\n${block}\n</div>`).join('\n')}
-</div>`;
-}
-
-function dashboardFooter(): string {
-  return `
-<div class="footer">
-  <button data-command="openDashboard">${escapeHtml(vscode.l10n.t('Open Dashboard'))}</button>
 </div>`;
 }
 
@@ -368,15 +358,13 @@ function streakValue(streak: number): string {
 /**
  * The past week as bars, one per day, labelled with the weekday. Height is
  * directly comparable — twice as tall is twice as long — where a shaded grid
- * makes the reader decode a colour scale before learning anything. Seven days
- * is what a person can hold in their head, and it labels cleanly at sidebar
- * width; the longer history is the dashboard's job.
+ * makes the reader decode a colour scale before learning anything. This plots
+ * the panel's whole window; the longer history is the dashboard's job.
  */
 function renderWeek(report: StatsReport): string {
-  const days = report.daily.slice(-TREND_DAYS);
-  if (days.length < 2) {
-    return '';
-  }
+  // Always the full window: the report pads days with no activity to zero, so
+  // this is STATS_DAYS bars whether or not the history reaches back that far.
+  const days = report.daily;
   const max = Math.max(...days.map((day) => day.active_seconds), 1);
   const columns = days
     .map((day, index) => {
@@ -490,21 +478,23 @@ function sum(values: number[]): number {
 }
 
 /**
- * The keyless state: one line naming the limit the reader just hit, one button
- * naming what lifts it. The numbers above already argued for the product, so
- * the card does not argue again — and the paperwork to sign up belongs on the
- * site, not in a sidebar.
+ * The panel's one exit, identical whether or not a key is set. The sidebar
+ * summarises a week and stops there; everything past that — longer history,
+ * every device, the full breakdown — is the dashboard's, and this says so
+ * once instead of the panel growing features to avoid saying it.
  *
- * The primary button opens the site because that is where a keyless visitor
- * can actually start: the key page sits behind a login they do not have yet.
- * "Set API Key" keeps the same name in the command palette and input box.
+ * Without a key the same card carries a second, quieter button. The primary
+ * one still opens the site, which is where a keyless visitor can actually
+ * start: the key page sits behind a login they do not have yet.
  */
-function onboardingCard(): string {
+function dashboardCard(apiKeyMissing: boolean): string {
+  const keyButton = apiKeyMissing
+    ? `\n  <button class="quiet" data-command="setApiKey">${escapeHtml(vscode.l10n.t('I have an API key'))}</button>`
+    : '';
   return `
 <div class="cta">
-  <p>${escapeHtml(vscode.l10n.t('Last {0} days, this machine only.', STATS_DAYS))}</p>
-  <button data-command="openWebsite">${escapeHtml(vscode.l10n.t('Keep your full history'))}</button>
-  <button class="quiet" data-command="setApiKey">${escapeHtml(vscode.l10n.t('I have an API key'))}</button>
+  <p>${escapeHtml(vscode.l10n.t('See more on your Dashboard.'))}</p>
+  <button data-command="${apiKeyMissing ? 'openWebsite' : 'openDashboard'}">${escapeHtml(vscode.l10n.t('Open Dashboard'))}</button>${keyButton}
 </div>`;
 }
 

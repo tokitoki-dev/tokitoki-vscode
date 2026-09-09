@@ -36,8 +36,14 @@ OVSX_PAT       Open VSX Access Token
 If automated release fails or you need manual control:
 
 ### 1. Build all platform VSIXes
+
+With the pinned-release CLI, exactly as the release workflow builds:
 ```bash
-make package-all
+scripts/fetch-cli-release.sh
+for t in darwin-x64 darwin-arm64 linux-x64 linux-arm64 win32-x64 win32-arm64; do
+  scripts/stage-cli.sh "$t"
+  npx vsce package --no-dependencies --allow-missing-repository --target "$t"
+done
 ```
 
 ### 2. Publish to VS Code Marketplace
@@ -62,7 +68,7 @@ Before pushing a release tag:
 - [ ] Update `package.json` version
 - [ ] Update `CHANGELOG.md` with release notes
 - [ ] Run `npm test` to verify tests pass
-- [ ] Run `make package-all` to verify builds succeed
+- [ ] Run `make build` to verify the build succeeds
 - [ ] Commit and push to `dev` branch
 - [ ] Create PR from `dev` to `main`
 - [ ] Get code review and merge to `main`

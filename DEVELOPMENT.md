@@ -33,16 +33,39 @@ seeds the shared location when the shared binary is missing or reports an
 older release version — staged and renamed into place, never a downgrade —
 then asks the CLI to update itself at most once a day.
 
+## Debug
+
+Never package a VSIX to iterate — that is the release path, not the dev loop:
+
+1. `npm run watch` (or let F5's task compile for you)
+2. Press F5 ("Run Extension") — a second VS Code window opens running the
+   extension straight from `out/`, no packaging, no install
+3. Edit code → in the dev window run "Developer: Reload Window" (Cmd+R).
+   Changes land in ~2 seconds. Breakpoints in `src/` work in the first window.
+
+For the stats webview specifically: in the dev window run
+"Developer: Open Webview Developer Tools" — full Chrome DevTools against the
+panel (live DOM/CSS editing, console). This replaces "open it in a browser":
+the webview depends on VS Code's CSS variables, `acquireVsCodeApi`, and
+`vscode.l10n`, so a plain browser tab would render a lie.
+
+The F5 tasks bake `TOKITOKI_BASE_URL=http://localhost:9093` (see
+.vscode/tasks.json), same as `make` — local runs never touch production.
+`make` (install into the real VS Code) is for final verification only.
+
 ## Build and Package
 
 ```sh
 npm install
-make              # platform VSIX for this machine (fetches the pinned CLI)
-make install      # package and install into local VS Code
-make package-all  # all six platform VSIXes, as the release workflow builds
-make test         # compile and run unit tests
-make build-cli    # cross-compile the CLI from ../tokitoki-cli source instead
+make              # build and install into local VS Code (default)
+make build        # platform VSIX for this machine only
+make clean        # remove everything generated
+npm test          # compile and run unit tests
 ```
+
+Every local build compiles the CLI from `../tokitoki-cli` source — never the
+pinned release. The pinned-release CLI (`scripts/fetch-cli-release.sh`) is
+used only by CI and the release workflow.
 
 Every VSIX is platform-specific (`vsce --target`): it bundles exactly the
 one CLI binary its platform needs, and the Marketplace serves each user the
@@ -50,11 +73,11 @@ matching package. `.build/cli/` holds all six binaries; `bin/` is the
 per-target staging area.
 
 The server URL is baked in at compile time by
-`scripts/generate-server-url.js`: unset builds talk to production, and
-`TOKITOKI_BASE_URL=http://localhost:9093 make` produces a test-server
-package. There is no runtime override: the extension passes the baked-in URL
-to every CLI invocation, so neither a setting nor the inherited environment
-can redirect where API keys and usage data go.
+`scripts/generate-server-url.js`. The Makefile always bakes the local dev
+server (`http://localhost:9093`); production URLs only come out of CI, where
+the variable is unset. There is no runtime override: the extension passes the
+baked-in URL to every CLI invocation, so neither a setting nor the inherited
+environment can redirect where API keys and usage data go.
 
 CI and releases bundle the CLI release pinned in
 `scripts/cli-release-pins.sh`; releases are cut by pushing a `vX.Y.Z` tag on

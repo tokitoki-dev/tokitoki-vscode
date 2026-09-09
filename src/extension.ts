@@ -5,6 +5,7 @@ import { ExtensionConfig, readConfig } from './config';
 import { Logger } from './logger';
 import { PROJECT_FILE_NAME, readProjectName, writeProjectName } from './projectFile';
 import { TOKITOKI_BASE_URL } from './serverUrl';
+import { StatsViewProvider } from './statsView';
 import { maskApiKey, TokitokiCli, TokitokiCliError } from './tokitokiCli';
 
 /** Reported when the host editor does not name itself. */
@@ -15,6 +16,7 @@ const LAST_UPDATE_CHECK_KEY = 'tokitoki.lastUpdateCheckAt';
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 class TokitokiExtension implements vscode.Disposable {
+  public readonly statsView: StatsViewProvider;
   private config: ExtensionConfig = readConfig();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly statusBar: vscode.StatusBarItem;
@@ -39,6 +41,7 @@ class TokitokiExtension implements vscode.Disposable {
     this.statusBar.name = 'Tokitoki';
     this.statusBar.command = 'tokitoki.openDashboard';
     this.tracker = new ActivityTracker((heartbeat) => this.sendHeartbeat(heartbeat));
+    this.statsView = new StatsViewProvider(() => this.createCli(), this.logger);
 
     this.disposables.push(
       this.statusBar,
@@ -72,6 +75,13 @@ class TokitokiExtension implements vscode.Disposable {
     } catch (error) {
       this.logger.warn(`Failed to seed shared CLI: ${error instanceof Error ? error.message : String(error)}`);
     }
+    // Which binary actually answers is the first question in any debugging
+    // session — a dev host runs the bundled build, an install the shared one.
+    try {
+      this.logger.info(`CLI binary: ${this.createCli().resolveExecutable()}`);
+    } catch (error) {
+      this.logger.warn(`No usable CLI binary: ${error instanceof Error ? error.message : String(error)}`);
+    }
     void this.promptForApiKeyIfMissing();
 
     // Tracking and uploading is the whole point of the extension: it starts
@@ -90,14 +100,24 @@ class TokitokiExtension implements vscode.Disposable {
   private async promptForApiKeyIfMissing(): Promise<void> {
     try {
       await this.createCli().getApiKey();
+      void this.updateApiKeyContext(true);
     } catch {
+      void this.updateApiKeyContext(false);
       await this.promptForApiKeyOnce();
     }
   }
 
-  /** One automatic AI usage sync. Silent while already running or missing a
-   * key — the activation prompt already asks for one. Same rules as the
-   * macOS app's automatic sync. */
+  /** Drives the `tokitoki.apiKeyConfigured` when-clause context: UI that
+   * jumps to the online dashboard only appears once a key exists. */
+  private updateApiKeyContext(configured: boolean): Thenable<unknown> {
+    return vscode.commands.executeCommand('setContext', 'tokitoki.apiKeyConfigured', configured);
+  }
+
+  /** One automatic AI usage sync. Silent while already running — and it runs
+   * with or without a key: the CLI scans locally and skips only the upload
+   * when no key is set, which keeps the stats view fed and lets the CLI's
+   * install ping fire. Skipping the CLI here would make keyless installs
+   * invisible — exactly the installs the ping exists to count. */
   private async syncNow(): Promise<void> {
     if (this.syncRunning) {
       return;
@@ -107,12 +127,15 @@ class TokitokiExtension implements vscode.Disposable {
     // concurrent syncs.
     this.syncRunning = true;
     try {
+      // Key presence only drives the UI state (prompt, dashboard gating);
+      // it no longer decides whether the sync runs.
       try {
         await this.createCli().getApiKey();
         this.apiKeyMissing = false;
+        void this.updateApiKeyContext(true);
       } catch {
         this.apiKeyMissing = true;
-        return;
+        void this.updateApiKeyContext(false);
       }
 
       this.updateStatus('$(tokitoki-logo~spin) Tokitoki', vscode.l10n.t('Tokitoki AI usage sync in progress'));
@@ -125,6 +148,13 @@ class TokitokiExtension implements vscode.Disposable {
         this.updateReadyStatus();
       } catch (error) {
         await this.handleCommandError(error, vscode.l10n.t('Tokitoki sync failed.'), false);
+      } finally {
+        // Whether the scan succeeded or failed, it is no longer pending —
+        // a failed scan must not leave the panel claiming it is still
+        // looking. A sync also writes new events into the local database,
+        // which are the very numbers the view renders.
+        this.statsView.markScanned();
+        void this.statsView.refresh();
       }
     } finally {
       this.syncRunning = false;
@@ -156,6 +186,11 @@ class TokitokiExtension implements vscode.Disposable {
       const result = await this.createCli().setApiKey(apiKey.trim());
       this.logCommandOutput(result.stdout, result.stderr);
       this.updateReadyStatus();
+      // The stats view carries the setup call-to-action and the dashboard
+      // button hides behind this context; flip both now that a key exists
+      // rather than at the next sync.
+      void this.updateApiKeyContext(true);
+      void this.statsView.refresh();
       // Sync starts before the notification: an awaited no-button toast only
       // resolves when the user dismisses it, so anything after it may never
       // run. And a user who just set a key wants data flowing now rather than
@@ -243,6 +278,9 @@ class TokitokiExtension implements vscode.Disposable {
       return;
     }
     this.logger.info(`Project name for ${folder.uri.fsPath} set to ${trimmed}`);
+    // The panel labels its headline with this name, so it is stale the moment
+    // the file is written.
+    void this.statsView.refresh();
     await vscode.window.showInformationMessage(vscode.l10n.t('Tokitoki project name set to {0}.', trimmed));
   }
 
@@ -265,8 +303,27 @@ class TokitokiExtension implements vscode.Disposable {
   }
 
   public async openDashboard(): Promise<void> {
-    // Signed-in when possible; anything that fails (no key, no network)
-    // falls back to the plain server URL, which lands on the login page.
+    // No key means the dashboard has nothing of this user's to show, so the
+    // jump is gated: guide to the key instead of dumping them on a login
+    // page they cannot get past.
+    try {
+      await this.createCli().getApiKey();
+    } catch {
+      void this.updateApiKeyContext(false);
+      const setKey = vscode.l10n.t('Set API Key');
+      const selected = await vscode.window.showInformationMessage(
+        vscode.l10n.t('Set your API key first — the online dashboard shows data synced from this machine.'),
+        setKey,
+      );
+      if (selected === setKey) {
+        await this.setApiKey();
+      }
+      return;
+    }
+
+    // Signed-in when possible; a failure past this point (network, server)
+    // falls back to the plain server URL — the key exists, so the site can
+    // take it from there.
     try {
       const url = await this.createCli().dashboardUrl();
       if (url) {
@@ -450,10 +507,17 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     controller,
+    vscode.window.registerWebviewViewProvider(StatsViewProvider.viewId, controller.statsView),
     vscode.commands.registerCommand('tokitoki.openDashboard', () => controller?.openDashboard()),
     vscode.commands.registerCommand('tokitoki.setApiKey', () => controller?.setApiKey()),
     vscode.commands.registerCommand('tokitoki.showApiKeyStatus', () => controller?.showApiKeyStatus()),
     vscode.commands.registerCommand('tokitoki.setProjectName', () => controller?.setProjectName()),
+    vscode.commands.registerCommand('tokitoki.refreshStats', () => controller?.statsView.refresh()),
+    // Settings live in the Settings editor, which already has search, sync and
+    // per-workspace overrides. This is a shortcut to them, filtered — not a
+    // second place to change them.
+    vscode.commands.registerCommand('tokitoki.openSettings', () =>
+      vscode.commands.executeCommand('workbench.action.openSettings', '@ext:tokitoki.tokitoki-vscode')),
   );
 
   void controller.initialize();

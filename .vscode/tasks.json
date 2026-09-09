@@ -5,13 +5,33 @@
       "type": "npm",
       "script": "compile",
       "group": "build",
-      "problemMatcher": "$tsc"
+      "problemMatcher": "$tsc",
+      "options": {
+        "env": {
+          "TOKITOKI_BASE_URL": "http://localhost:9093"
+        }
+      }
     },
     {
       "type": "npm",
       "script": "watch",
       "isBackground": true,
-      "problemMatcher": "$tsc-watch"
+      "problemMatcher": "$tsc-watch",
+      "options": {
+        "env": {
+          "TOKITOKI_BASE_URL": "http://localhost:9093"
+        }
+      }
+    },
+    {
+      "type": "npm",
+      "script": "build:agent:dev",
+      "problemMatcher": []
+    },
+    {
+      "label": "prelaunch",
+      "dependsOn": ["npm: compile", "npm: build:agent:dev"],
+      "problemMatcher": []
     }
   ]
 }

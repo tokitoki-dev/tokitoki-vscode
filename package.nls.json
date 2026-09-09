@@ -4,5 +4,8 @@
   "command.openDashboard.title": "Open Dashboard",
   "command.showApiKeyStatus.title": "Show API Key Status",
   "command.setProjectName.title": "Set Project Name",
+  "command.refreshStats.title": "Refresh Stats",
+  "command.openSettings.title": "Settings",
+  "view.stats.name": "Usage Stats",
   "config.statusBar.enabled.description": "Show the Tokitoki status bar item."
 }

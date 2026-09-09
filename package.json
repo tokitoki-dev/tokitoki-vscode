@@ -4,7 +4,7 @@
   "description": "%extension.description%",
   "version": "0.1.7",
   "publisher": "tokitoki",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "engines": {
     "vscode": "^1.92.0"
   },

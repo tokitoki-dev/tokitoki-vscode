@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.8
+
+- New **Usage Stats** view in the activity bar shows your stats without
+  leaving the editor. Refresh it from the view title, and reach the
+  dashboard, project name, and API key from its menu.
+- The extension is now licensed under Apache 2.0, previously MIT.
+- Japanese and Simplified Chinese translations cover the new view.
+- Bundled CLI updated to v0.1.8.
+
 ## 0.1.7
 
 - VS Code forks now report themselves by name. Cursor, Windsurf, and

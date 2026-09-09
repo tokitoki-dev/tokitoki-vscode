@@ -2,7 +2,7 @@
   "name": "tokitoki-vscode",
   "displayName": "Tokitoki",
   "description": "%extension.description%",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "publisher": "tokitoki",
   "license": "Apache-2.0",
   "engines": {

@@ -81,6 +81,19 @@ jobs:
               --target "$t" -o "tokitoki-vscode-$t-$version.vsix"
           done
 
+      # Release notes are the CHANGELOG section for this version, the same
+      # text users see on the Marketplace. A tag without a section fails
+      # here, before anything is published.
+      - name: Extract release notes from CHANGELOG
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '$0 == "## " v {p=1; next} /^## / {p=0} p' CHANGELOG.md > release-notes.md
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "CHANGELOG.md has no '## $version' section" >&2
+            exit 1
+          fi
+          cat release-notes.md
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -88,7 +101,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" tokitoki-vscode-*.vsix \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
-            --generate-notes
+            --notes-file release-notes.md
 
       # The two marketplaces publish independently: one refusing a version
       # (already published, namespace missing) must not stop the other, or a

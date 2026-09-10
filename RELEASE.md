@@ -66,7 +66,9 @@ OVSX_PAT=your_token ovsx publish tokitoki-vscode-darwin-arm64-0.1.5.vsix
 Before pushing a release tag:
 
 - [ ] Update `package.json` version
-- [ ] Update `CHANGELOG.md` with release notes
+- [ ] Update `CHANGELOG.md` with release notes. The release workflow takes
+      the `## x.y.z` section as the GitHub release notes and fails the tag if
+      it is missing.
 - [ ] Run `npm test` to verify tests pass
 - [ ] Run `make build` to verify the build succeeds
 - [ ] Commit and push to `dev` branch

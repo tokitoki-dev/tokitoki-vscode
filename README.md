@@ -18,8 +18,9 @@ dashboard at [tokitoki.dev](https://tokitoki.dev).
   you use.
 - **Works offline** — activity is queued locally and uploaded when you are
   back online. Nothing is lost on a plane.
-- **Open source** — the extension and its CLI are open source, and the same
-  tracking works in JetBrains IDEs, Eclipse, and the macOS menu bar app.
+- **Open source** — the extension, the CLI it bundles, and the macOS and
+  Windows companion apps are all Apache-2.0 at
+  [github.com/tokitoki-dev](https://github.com/tokitoki-dev).
 
 ## Quick Start
 
@@ -66,3 +67,4 @@ key; delete your data anytime from the dashboard.
 - [Dashboard](https://tokitoki.dev)
 - [Source & issues](https://github.com/tokitoki-dev/tokitoki-vscode)
 - [Contributing / development docs](https://github.com/tokitoki-dev/tokitoki-vscode/blob/main/DEVELOPMENT.md)
+- [All Tokitoki clients](https://github.com/tokitoki-dev): macOS, Windows, CLI

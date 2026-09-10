@@ -17,7 +17,12 @@
     "productivity",
     "analytics",
     "metrics",
-    "ai"
+    "ai",
+    "claude code",
+    "copilot",
+    "codex",
+    "token cost",
+    "wakatime"
   ],
   "extensionKind": [
     "workspace"

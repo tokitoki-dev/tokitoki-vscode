@@ -6,7 +6,8 @@ import { Logger } from './logger';
 import { PROJECT_FILE_NAME, readProjectName, writeProjectName } from './projectFile';
 import { TOKITOKI_BASE_URL, TOKITOKI_DATA_DIR } from './buildConfig';
 import { StatsViewProvider } from './statsView';
-import { maskApiKey, TokitokiCli, TokitokiCliError } from './tokitokiCli';
+import { formatTokens } from './format';
+import { maskApiKey, TodayReport, TokitokiCli, TokitokiCliError } from './tokitokiCli';
 
 /** Reported when the host editor does not name itself. */
 const UNKNOWN_EDITOR = 'unknown';
@@ -14,6 +15,10 @@ const UNKNOWN_EDITOR = 'unknown';
 const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const LAST_UPDATE_CHECK_KEY = 'tokitoki.lastUpdateCheckAt';
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
+/** A heartbeat lands about every two minutes per file; the figure it moves
+ * does not need re-reading more often than this. Fresh uploads (a sync)
+ * bypass it. */
+const TODAY_REFRESH_MIN_MS = 60 * 1000;
 
 class TokitokiExtension implements vscode.Disposable {
   public readonly statsView: StatsViewProvider;
@@ -26,6 +31,10 @@ class TokitokiExtension implements vscode.Disposable {
   private heartbeatChain: Promise<void> = Promise.resolve();
   private lastHeartbeatAt: Date | undefined;
   private lastSyncAt: Date | undefined;
+  /** Today's figure as the server last reported it — the status bar's text. */
+  private today: TodayReport | undefined;
+  private todayFetchedAt = 0;
+  private todayRefreshing = false;
   private promptedForApiKey = false;
   private apiKeyMissing = false;
 
@@ -146,6 +155,8 @@ class TokitokiExtension implements vscode.Disposable {
         this.logCommandOutput(result.stdout, result.stderr);
         this.lastSyncAt = new Date();
         this.updateReadyStatus();
+        // The sync just uploaded the AI events; the figure moved.
+        void this.refreshToday(true);
       } catch (error) {
         await this.handleCommandError(error, vscode.l10n.t('Tokitoki sync failed.'), false);
       } finally {
@@ -372,6 +383,7 @@ class TokitokiExtension implements vscode.Disposable {
           timeSeconds: heartbeat.timeSeconds,
           project: heartbeat.project,
           projectFolder: heartbeat.projectFolder,
+          language: heartbeat.language,
           editor: this.editorName(),
           plugin: this.pluginUserAgent(),
           category: heartbeat.category,
@@ -379,10 +391,13 @@ class TokitokiExtension implements vscode.Disposable {
           lineNumber: heartbeat.lineNumber,
           cursorPosition: heartbeat.cursorPosition,
           linesInFile: heartbeat.linesInFile,
+          linesAdded: heartbeat.linesAdded,
+          linesRemoved: heartbeat.linesRemoved,
         });
         this.lastHeartbeatAt = new Date();
         this.updateReadyStatus();
         this.logger.debug(`Heartbeat sent: ${heartbeat.entity} (${heartbeat.category})`);
+        void this.refreshToday(false);
       } catch (error) {
         if (error instanceof TokitokiCliError && error.isMissingApiKey) {
           this.apiKeyMissing = true;
@@ -477,15 +492,66 @@ class TokitokiExtension implements vscode.Disposable {
     }
   }
 
+  /**
+   * Re-reads today's figure from the server through the CLI. Rate-limited
+   * to once a minute unless `force` — a sync just landed new events. Runs
+   * only with a key: without one there is no account to ask about, and the
+   * tooltip says so instead.
+   */
+  private async refreshToday(force: boolean): Promise<void> {
+    if (this.apiKeyMissing || this.todayRefreshing) {
+      return;
+    }
+    const now = Date.now();
+    if (!force && now - this.todayFetchedAt < TODAY_REFRESH_MIN_MS) {
+      return;
+    }
+    this.todayRefreshing = true;
+    this.todayFetchedAt = now;
+    try {
+      this.today = await this.createCli().today();
+      this.updateReadyStatus();
+    } catch (error) {
+      if (error instanceof TokitokiCliError && error.isMissingApiKey) {
+        this.apiKeyMissing = true;
+        this.today = undefined;
+        this.updateReadyStatus();
+        return;
+      }
+      // An old shared CLI without `today`, or the server and the cache both
+      // unavailable: the item keeps whatever it last showed.
+      this.logger.debug(`Today unavailable: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      this.todayRefreshing = false;
+    }
+  }
+
   private updateReadyStatus(): void {
     const parts = [vscode.l10n.t('Tokitoki: tracking coding activity. Click to open your dashboard.')];
+    const today = this.apiKeyMissing ? undefined : this.today;
+    if (today) {
+      parts.push(vscode.l10n.t('Today: {0} active, {1} tokens.', today.text, formatTokens(today.total_tokens)));
+      parts.push(
+        today.scope === 'team'
+          ? vscode.l10n.t('Scope: team {0}.', today.team_name ?? '')
+          : vscode.l10n.t('Scope: personal.'),
+      );
+      if (today.stale) {
+        parts.push(vscode.l10n.t('Offline: showing the last figure the server gave.'));
+      }
+    } else {
+      parts.push(vscode.l10n.t('Set an API key to see today\'s active time here.'));
+    }
     if (this.lastHeartbeatAt) {
       parts.push(vscode.l10n.t('Last heartbeat: {0}.', this.lastHeartbeatAt.toLocaleString()));
     }
     if (this.lastSyncAt) {
       parts.push(vscode.l10n.t('Last AI usage sync: {0}.', this.lastSyncAt.toLocaleString()));
     }
-    this.updateStatus('$(tokitoki-logo) Tokitoki', parts.join(' '));
+    const text = today && this.config.statusBarShowTime
+      ? `$(tokitoki-logo) ${today.text}`
+      : '$(tokitoki-logo) Tokitoki';
+    this.updateStatus(text, parts.join(' '));
   }
 
   private updateStatus(text: string, tooltip: string): void {

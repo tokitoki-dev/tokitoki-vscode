@@ -7,5 +7,6 @@
   "command.refreshStats.title": "Refresh Stats",
   "command.openSettings.title": "Settings",
   "view.stats.name": "Usage Stats",
-  "config.statusBar.enabled.description": "Show the Tokitoki status bar item."
+  "config.statusBar.enabled.description": "Show the Tokitoki status bar item.",
+  "config.statusBar.showTime.description": "Show today's active time in the status bar item. Off, the item shows only the icon and the figure moves to its tooltip."
 }

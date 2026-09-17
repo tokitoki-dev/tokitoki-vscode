@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { languageName } from './language';
+import { LineChanges } from './lineChanges';
 import { HeartbeatThrottler } from './throttler';
 
 export interface TrackedHeartbeat {
@@ -7,14 +9,37 @@ export interface TrackedHeartbeat {
   timeSeconds: number;
   project?: string;
   projectFolder?: string;
+  /** The shared language name, when VS Code's id translates to one. */
+  language?: string;
   category: string;
   isWrite: boolean;
   lineNumber: number;
   cursorPosition: number;
   linesInFile: number;
+  /** Lines the user typed and deleted in this file since its last heartbeat. */
+  linesAdded: number;
+  linesRemoved: number;
+}
+
+/**
+ * Where activity is credited: a file on disk, or a notebook. A notebook cell
+ * is an editor of its own in VS Code, with a uri of its own scheme, but the
+ * work is on the notebook — one entity per .ipynb, the cell index as the
+ * "line", the cell language as the language.
+ */
+interface Target {
+  uri: vscode.Uri;
+  languageId?: string;
+  line: number;
+  column: number;
+  lineCount: number;
+  /** The file is open in a diff, merge or review view: the user is reading
+   * a change, not writing one. */
+  reviewing: boolean;
 }
 
 const ALLOWED_SCHEMES = ['file', 'vscode-remote'];
+const NOTEBOOK_CELL_SCHEME = 'vscode-notebook-cell';
 const DEBOUNCE_MS = 50;
 
 /**
@@ -25,11 +50,12 @@ const DEBOUNCE_MS = 50;
  *
  * Activity is anything the user does in the window, not only edits: reading
  * (scrolling), coming back to the window, switching tabs — including to an AI
- * chat panel — and using the terminal all count. Every one of these is a
- * signal that the user is here; the throttler keeps them to one heartbeat per
- * file per interval, so more sources mean better coverage, not more events.
- * What happens inside a webview (typing into a chat panel) raises no event at
- * all, so that time is only covered when it is bracketed by these.
+ * chat panel — using the terminal, and creating, renaming or deleting files
+ * all count. Every one of these is a signal that the user is here; the
+ * throttler keeps them to one heartbeat per file per interval, so more
+ * sources mean better coverage, not more events. What happens inside a
+ * webview (typing into a chat panel) raises no event at all, so that time is
+ * only covered when it is bracketed by these.
  */
 export class ActivityTracker implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
@@ -38,14 +64,14 @@ export class ActivityTracker implements vscode.Disposable {
   private pendingWrite = false;
   private isDebugging = false;
   private isCompiling = false;
+  private readonly lines = new LineChanges();
   /**
-   * The text editor the last heartbeat was attributed to. A webview tab (an
-   * AI chat panel opened as an editor) or the terminal leaves
-   * `activeTextEditor` undefined while the user is plainly working on the
-   * file they just left, so activity there is attributed to that file rather
-   * than dropped.
+   * What the last heartbeat was credited to. A webview tab (an AI chat panel
+   * opened as an editor) or the terminal leaves no editor active while the
+   * user is plainly working on the file they just left, so activity there is
+   * credited to that file rather than dropped.
    */
-  private lastEditor: vscode.TextEditor | undefined;
+  private lastTarget: Target | undefined;
 
   constructor(private readonly emit: (heartbeat: TrackedHeartbeat) => void) {}
 
@@ -53,48 +79,71 @@ export class ActivityTracker implements vscode.Disposable {
     if (this.disposables.length > 0) {
       return;
     }
+    const activity = () => this.onEvent(false);
+    const write = () => this.onEvent(true);
     this.disposables.push(
       vscode.window.onDidChangeTextEditorSelection((event) => {
         if (event.kind === vscode.TextEditorSelectionChangeKind.Command) {
           return;
         }
-        this.onEvent(false);
+        activity();
       }),
-      vscode.workspace.onDidChangeTextDocument(() => this.onEvent(false)),
-      vscode.window.onDidChangeActiveTextEditor(() => this.onEvent(false)),
-      vscode.window.onDidChangeTextEditorVisibleRanges(() => this.onEvent(false)),
-      vscode.window.tabGroups.onDidChangeTabs(() => this.onEvent(false)),
+      vscode.workspace.onDidChangeTextDocument((event) => {
+        const entity = documentEntity(event.document);
+        if (entity) {
+          this.lines.record(
+            entity,
+            event.contentChanges.map((change) => ({
+              text: change.text,
+              startLine: change.range.start.line,
+              endLine: change.range.end.line,
+            })),
+          );
+        }
+        activity();
+      }),
+      vscode.workspace.onDidCloseTextDocument((document) => this.flushClosed(document)),
+      vscode.window.onDidChangeActiveTextEditor(activity),
+      vscode.window.onDidChangeTextEditorVisibleRanges(activity),
+      vscode.window.tabGroups.onDidChangeTabs(activity),
       vscode.window.onDidChangeWindowState((state) => {
         if (state.focused) {
-          this.onEvent(false);
+          activity();
         }
       }),
-      vscode.window.onDidOpenTerminal(() => this.onEvent(false)),
-      vscode.window.onDidChangeActiveTerminal(() => this.onEvent(false)),
-      vscode.window.onDidChangeTerminalState(() => this.onEvent(false)),
+      vscode.window.onDidOpenTerminal(activity),
+      vscode.window.onDidChangeActiveTerminal(activity),
+      vscode.window.onDidChangeTerminalState(activity),
       // Every command run in an integrated terminal (shell integration, on by
       // default for bash/zsh/pwsh). Keystrokes inside a terminal raise no
       // stable event; the command they add up to does.
-      vscode.window.onDidStartTerminalShellExecution(() => this.onEvent(false)),
-      vscode.workspace.onDidSaveTextDocument(() => this.onEvent(true)),
+      vscode.window.onDidStartTerminalShellExecution(activity),
+      vscode.workspace.onDidChangeNotebookDocument(activity),
+      vscode.window.onDidChangeNotebookEditorSelection(activity),
+      vscode.window.onDidChangeActiveNotebookEditor(activity),
+      vscode.workspace.onDidSaveTextDocument(write),
+      vscode.workspace.onDidSaveNotebookDocument(write),
+      vscode.workspace.onDidCreateFiles(write),
+      vscode.workspace.onDidRenameFiles(write),
+      vscode.workspace.onDidDeleteFiles(write),
       vscode.debug.onDidStartDebugSession(() => {
         this.isDebugging = true;
-        this.onEvent(false);
+        activity();
       }),
       vscode.debug.onDidTerminateDebugSession(() => {
         this.isDebugging = false;
-        this.onEvent(false);
+        activity();
       }),
       vscode.tasks.onDidStartTask((event) => {
         if (event.execution.task.isBackground) {
           return;
         }
         this.isCompiling = true;
-        this.onEvent(false);
+        activity();
       }),
       vscode.tasks.onDidEndTask(() => {
         this.isCompiling = false;
-        this.onEvent(false);
+        activity();
       }),
     );
   }
@@ -105,7 +154,8 @@ export class ActivityTracker implements vscode.Disposable {
       this.debounceTimer = undefined;
     }
     this.pendingWrite = false;
-    this.lastEditor = undefined;
+    this.lastTarget = undefined;
+    this.lines.clear();
     for (const disposable of this.disposables.splice(0)) {
       disposable.dispose();
     }
@@ -131,49 +181,192 @@ export class ActivityTracker implements vscode.Disposable {
   }
 
   private flush(isWrite: boolean): void {
-    const editor = this.currentEditor();
-    const document = editor?.document;
-    if (!editor || !document || !ALLOWED_SCHEMES.includes(document.uri.scheme)) {
+    const target = this.resolveTarget();
+    if (!target) {
       return;
     }
-    const entity = document.uri.fsPath;
-    if (!entity) {
-      return;
-    }
-    this.lastEditor = editor;
+    this.lastTarget = target;
+    const entity = target.uri.fsPath;
 
-    const category = this.isDebugging ? 'debugging' : this.isCompiling ? 'building' : 'coding';
+    const category = this.isDebugging ? 'debugging'
+      : this.isCompiling ? 'building'
+      : target.reviewing ? 'code reviewing'
+      : 'coding';
     const now = Date.now();
     if (!this.throttler.shouldSend(entity, category, now, isWrite)) {
       return;
     }
 
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri)
-      ?? vscode.workspace.workspaceFolders?.[0];
-
+    // Lines are taken only once the heartbeat is actually going out: a
+    // throttled flush leaves them pending for the one that does.
+    const lines = this.lines.take(entity);
     this.emit({
       entity,
       timeSeconds: now / 1000,
-      project: workspaceFolder?.name,
-      projectFolder: workspaceFolder?.uri.fsPath,
+      ...projectOf(target.uri),
+      language: languageName(target.languageId),
       category,
       isWrite,
-      lineNumber: editor.selection.start.line + 1,
-      cursorPosition: editor.selection.start.character + 1,
-      linesInFile: document.lineCount,
+      lineNumber: target.line,
+      cursorPosition: target.column,
+      linesInFile: target.lineCount,
+      linesAdded: lines.added,
+      linesRemoved: lines.removed,
     });
   }
 
-  /** The active text editor, or the one the user was last in when no text
-   * editor is active. A closed document is no longer anyone's work. */
-  private currentEditor(): vscode.TextEditor | undefined {
-    const active = vscode.window.activeTextEditor;
-    if (active) {
-      return active;
+  /**
+   * A closed file with typed lines nobody has carried yet gets one last
+   * heartbeat for them, outside the throttle: closing is a real action, and
+   * the alternative is those lines waiting for a reopen that may never come.
+   */
+  private flushClosed(document: vscode.TextDocument): void {
+    const entity = documentEntity(document);
+    if (!entity || !this.lines.has(entity)) {
+      return;
     }
-    if (this.lastEditor && !this.lastEditor.document.isClosed) {
-      return this.lastEditor;
+    const lines = this.lines.take(entity);
+    this.emit({
+      entity,
+      timeSeconds: Date.now() / 1000,
+      ...projectOf(document.uri),
+      language: languageName(document.languageId),
+      category: 'coding',
+      isWrite: false,
+      lineNumber: 0,
+      cursorPosition: 0,
+      linesInFile: document.lineCount,
+      linesAdded: lines.added,
+      linesRemoved: lines.removed,
+    });
+  }
+
+  /**
+   * What the user is working on right now: the active text editor (a cell
+   * editor stands for its notebook), else the file behind the active diff,
+   * else the active notebook, else whatever the last heartbeat went to. Only
+   * a file or notebook on disk qualifies — untitled buffers, output panes and
+   * the like are not work on a project.
+   */
+  private resolveTarget(): Target | undefined {
+    const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+    const target = editorTarget(vscode.window.activeTextEditor)
+      ?? diffTarget(tab)
+      ?? notebookTarget(vscode.window.activeNotebookEditor)
+      ?? this.lastTarget;
+    if (!target) {
+      return undefined;
     }
+    return { ...target, reviewing: isReviewing(tab, vscode.window.activeTextEditor) };
+  }
+}
+
+/** The entity a document's activity is credited to: itself, or for a
+ * notebook cell its notebook. Undefined for anything not on disk. */
+function documentEntity(document: vscode.TextDocument): string | undefined {
+  const uri = document.uri.scheme === NOTEBOOK_CELL_SCHEME
+    ? notebookOf(document)?.uri
+    : document.uri;
+  return uri && ALLOWED_SCHEMES.includes(uri.scheme) && uri.fsPath ? uri.fsPath : undefined;
+}
+
+function notebookOf(cellDocument: vscode.TextDocument): vscode.NotebookDocument | undefined {
+  return vscode.workspace.notebookDocuments.find((candidate) =>
+    candidate.getCells().some((cell) => cell.document === cellDocument),
+  );
+}
+
+function projectOf(uri: vscode.Uri): { project?: string; projectFolder?: string } {
+  const folder = vscode.workspace.getWorkspaceFolder(uri) ?? vscode.workspace.workspaceFolders?.[0];
+  return { project: folder?.name, projectFolder: folder?.uri.fsPath };
+}
+
+/** A target on disk, or nothing: every producer below goes through here, so
+ * the scheme rule is applied once. */
+function onDisk(target: Omit<Target, 'reviewing'>): Target | undefined {
+  if (!ALLOWED_SCHEMES.includes(target.uri.scheme) || !target.uri.fsPath) {
     return undefined;
   }
+  return { ...target, reviewing: false };
+}
+
+function editorTarget(editor: vscode.TextEditor | undefined): Target | undefined {
+  if (!editor) {
+    return undefined;
+  }
+  const document = editor.document;
+  if (document.uri.scheme === NOTEBOOK_CELL_SCHEME) {
+    const notebook = notebookOf(document);
+    if (!notebook) {
+      return undefined;
+    }
+    const index = notebook.getCells().findIndex((cell) => cell.document === document);
+    return onDisk({
+      uri: notebook.uri,
+      languageId: document.languageId,
+      line: index + 1,
+      column: editor.selection.start.character + 1,
+      lineCount: notebook.cellCount,
+    });
+  }
+  return onDisk({
+    uri: document.uri,
+    languageId: document.languageId,
+    line: editor.selection.start.line + 1,
+    column: editor.selection.start.character + 1,
+    lineCount: document.lineCount,
+  });
+}
+
+/**
+ * A diff whose focused side is not a file on disk — an agent's proposed
+ * change, say, where both sides are virtual documents — is still a review of
+ * the file the diff is about. Whichever side is on disk names it.
+ */
+function diffTarget(tab: vscode.Tab | undefined): Target | undefined {
+  const input = tab?.input;
+  if (!(input instanceof vscode.TabInputTextDiff)) {
+    return undefined;
+  }
+  for (const uri of [input.modified, input.original]) {
+    const target = onDisk({ uri, line: 0, column: 0, lineCount: 0 });
+    if (target) {
+      return target;
+    }
+  }
+  return undefined;
+}
+
+/** A notebook with no cell focused (scrolling, a rendered markdown cell).
+ * Its language is that of its first code cell — what a .ipynb is written in. */
+function notebookTarget(editor: vscode.NotebookEditor | undefined): Target | undefined {
+  if (!editor) {
+    return undefined;
+  }
+  const notebook = editor.notebook;
+  const firstCode = notebook.getCells().find((cell) => cell.kind === vscode.NotebookCellKind.Code);
+  return onDisk({
+    uri: notebook.uri,
+    languageId: firstCode?.document.languageId,
+    line: editor.selection.start + 1,
+    column: 0,
+    lineCount: notebook.cellCount,
+  });
+}
+
+/**
+ * Reading a change rather than making one: a diff editor (git, an agent's
+ * proposed edit), a pull request document, or a webview whose
+ * name says it is a diff (Codex opens its review as one). The tab is the
+ * tell, not the document — the focused side of a git diff is the plain file.
+ */
+function isReviewing(tab: vscode.Tab | undefined, editor: vscode.TextEditor | undefined): boolean {
+  const input = tab?.input;
+  if (input instanceof vscode.TabInputTextDiff) {
+    return true;
+  }
+  if (input instanceof vscode.TabInputWebview) {
+    return `${input.viewType} ${tab?.label ?? ''}`.toLowerCase().includes('diff');
+  }
+  return editor?.document.uri.scheme === 'pr';
 }

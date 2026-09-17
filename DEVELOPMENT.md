@@ -12,14 +12,30 @@ editor events -> throttler -> tokitoki heartbeat --entity FILE ...
 ```
 
 - Selection changes, edits, scrolling, tab switches (including to an AI chat
-  panel), window focus, terminal use (open, switch, every command run), saves,
-  debug and task events feed a
-  50ms debounce, then a throttler: one heartbeat per file every 2 minutes,
-  with writes and file/category switches passing immediately. The same rule
-  every Tokitoki editor plugin uses. When no text editor is active (a chat
-  panel or the terminal has focus) the heartbeat goes to the file the user
-  was last in. Typing inside a webview raises no VS Code event, so that time
-  only counts when bracketed by the events above.
+  panel), window focus, terminal use (open, switch, every command run),
+  notebook edits and selection, saves, file create/rename/delete, debug and
+  task events feed a 50ms debounce, then a throttler: one heartbeat per file
+  every 2 minutes, with writes and file/category switches passing
+  immediately. The same rule every Tokitoki editor plugin uses. A notebook
+  cell is credited to its .ipynb with the cell's language. When no editor is
+  active (a chat panel or the terminal has focus) the heartbeat goes to what
+  the user was last in. Typing inside a webview raises no VS Code event, so
+  that time only counts when bracketed by the events above.
+- The heartbeat carries VS Code's language id translated to the shared
+  language vocabulary (src/language.ts); an id without a translation is left
+  out and the CLI detects the language from the path.
+- Category: `debugging` during a debug session, `building` during a
+  non-background task, `code reviewing` while the active tab is a diff (git,
+  an agent's proposed edit), a pull request document or a diff webview
+  (Codex), otherwise `coding`.
+- Lines: every edit event is classified by shape (src/lineChanges.ts) — a
+  keystroke, Enter, or a deletion is typed; a block insert or a multi-change
+  event (paste, completion, formatter, an agent rewriting the file) is not
+  and counts for nothing. Typed lines accumulate per file and ride that
+  file's next heartbeat as `--lines-added/--lines-removed`; closing a file
+  with lines still pending sends one last heartbeat for them. The server
+  files every line on an IDE heartbeat as human work, next to the diffs
+  agents report from their own logs.
 - The CLI detects language and applies `.tokitoki` project files centrally,
   and queues events locally when offline.
 

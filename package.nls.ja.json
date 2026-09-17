@@ -7,5 +7,6 @@
   "command.refreshStats.title": "統計を更新",
   "command.openSettings.title": "設定",
   "view.stats.name": "利用状況",
-  "config.statusBar.enabled.description": "Tokitoki のステータスバー項目を表示します。"
+  "config.statusBar.enabled.description": "Tokitoki のステータスバー項目を表示します。",
+  "config.statusBar.showTime.description": "ステータスバー項目に今日のアクティブ時間を表示します。オフにするとアイコンのみ表示され、時間はツールチップに移ります。"
 }

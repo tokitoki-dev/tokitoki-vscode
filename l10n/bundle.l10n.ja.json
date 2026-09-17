@@ -40,5 +40,10 @@
   "d": "日",
   "Last {0} days": "直近 {0} 日間",
   "Projects": "プロジェクト",
-  "{0} total": "全 {0} 件"
+  "{0} total": "全 {0} 件",
+  "Today: {0} active, {1} tokens.": "今日：アクティブ {0}、トークン {1}。",
+  "Scope: personal.": "範囲：個人。",
+  "Scope: team {0}.": "範囲：チーム {0}。",
+  "Offline: showing the last figure the server gave.": "オフライン：サーバーが最後に返した数値を表示しています。",
+  "Set an API key to see today's active time here.": "API キーを設定すると今日のアクティブ時間がここに表示されます。"
 }

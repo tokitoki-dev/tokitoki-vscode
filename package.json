@@ -155,6 +155,12 @@
           "default": true,
           "scope": "application",
           "description": "%config.statusBar.enabled.description%"
+        },
+        "tokitoki.statusBar.showTime": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "%config.statusBar.showTime.description%"
         }
       }
     }

@@ -40,5 +40,10 @@
   "d": "天",
   "Last {0} days": "最近 {0} 天",
   "Projects": "项目",
-  "{0} total": "共 {0} 个"
+  "{0} total": "共 {0} 个",
+  "Today: {0} active, {1} tokens.": "今天：活动 {0}，token {1}。",
+  "Scope: personal.": "范围：个人。",
+  "Scope: team {0}.": "范围：团队 {0}。",
+  "Offline: showing the last figure the server gave.": "离线：显示服务器上次给出的数字。",
+  "Set an API key to see today's active time here.": "设置 API key 后这里会显示今天的活动时长。"
 }

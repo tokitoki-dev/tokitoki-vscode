@@ -31,12 +31,16 @@ export interface HeartbeatArgs {
   editor: string;
   project?: string;
   projectFolder?: string;
+  /** Omitted, the CLI detects one from the entity's path. */
+  language?: string;
   plugin?: string;
   category?: string;
   isWrite?: boolean;
   lineNumber?: number;
   cursorPosition?: number;
   linesInFile?: number;
+  linesAdded?: number;
+  linesRemoved?: number;
 }
 
 /** The JSON report of `tokitoki stats` (tokitoki-cli internal/usagestats).
@@ -76,6 +80,22 @@ export interface StatsGroup {
   events: number;
   total_tokens: number;
   active_seconds: number;
+}
+
+/** The JSON of `tokitoki today` (tokitoki-cli internal/statusbar): today's
+ * figure as the server computes it for the account behind the key. */
+export interface TodayReport {
+  date: string;
+  timezone: string;
+  scope: 'personal' | 'team';
+  team_name?: string;
+  active_seconds: number;
+  total_tokens: number;
+  /** Ready to display, e.g. "3h 23m". */
+  text: string;
+  /** Served from the CLI's cache because the server was unreachable. */
+  stale: boolean;
+  fetched_at: string;
 }
 
 export class TokitokiCliError extends Error {
@@ -211,6 +231,9 @@ export class TokitokiCli {
     if (args.projectFolder) {
       command.push('--project-folder', args.projectFolder);
     }
+    if (args.language) {
+      command.push('--language', args.language);
+    }
     if (args.plugin) {
       command.push('--plugin', args.plugin);
     }
@@ -228,6 +251,12 @@ export class TokitokiCli {
     }
     if (args.linesInFile && args.linesInFile > 0) {
       command.push('--lines-in-file', String(args.linesInFile));
+    }
+    if (args.linesAdded && args.linesAdded > 0) {
+      command.push('--lines-added', String(args.linesAdded));
+    }
+    if (args.linesRemoved && args.linesRemoved > 0) {
+      command.push('--lines-removed', String(args.linesRemoved));
     }
     return this.run(command);
   }
@@ -275,6 +304,17 @@ export class TokitokiCli {
       return JSON.parse(result.stdout) as StatsReport;
     } catch {
       throw new Error(`Unreadable response from 'tokitoki stats': ${result.stdout.trim() || '(empty)'}`);
+    }
+  }
+
+  /** Today's figure from the server, or the CLI's last cached answer marked
+   * stale when offline. No key throws with isMissingApiKey set. */
+  public async today(): Promise<TodayReport> {
+    const result = await this.run(['today']);
+    try {
+      return JSON.parse(result.stdout) as TodayReport;
+    } catch {
+      throw new Error(`Unreadable response from 'tokitoki today': ${result.stdout.trim() || '(empty)'}`);
     }
   }
 

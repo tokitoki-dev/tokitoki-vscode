@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { Logger } from './logger';
 import { readProjectName } from './projectFile';
 import { TOKITOKI_BASE_URL } from './buildConfig';
+import { formatTokens } from './format';
 import { StatsDaily, StatsReport, TokitokiCli } from './tokitokiCli';
 
 /** Days of local history the panel reads, and the only window it ever shows.
@@ -531,19 +532,6 @@ function tile(label: string, value: string, color: string): string {
 
 function banner(text: string): string {
   return `<div class="banner">${escapeHtml(text)}</div>`;
-}
-
-function formatTokens(tokens: number): string {
-  if (tokens >= 1_000_000_000) {
-    return `${(tokens / 1_000_000_000).toFixed(1)}B`;
-  }
-  if (tokens >= 1_000_000) {
-    return `${(tokens / 1_000_000).toFixed(1)}M`;
-  }
-  if (tokens >= 1_000) {
-    return `${(tokens / 1_000).toFixed(1)}K`;
-  }
-  return String(tokens);
 }
 
 function formatDuration(seconds: number): string {

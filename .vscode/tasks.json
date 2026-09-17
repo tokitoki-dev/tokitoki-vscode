@@ -8,7 +8,8 @@
       "problemMatcher": "$tsc",
       "options": {
         "env": {
-          "TOKITOKI_BASE_URL": "http://localhost:9093"
+          "TOKITOKI_BASE_URL": "http://localhost:9093",
+          "TOKITOKI_DATA_DIR": ".tokitoki-dev"
         }
       }
     },
@@ -19,14 +20,21 @@
       "problemMatcher": "$tsc-watch",
       "options": {
         "env": {
-          "TOKITOKI_BASE_URL": "http://localhost:9093"
+          "TOKITOKI_BASE_URL": "http://localhost:9093",
+          "TOKITOKI_DATA_DIR": ".tokitoki-dev"
         }
       }
     },
     {
       "type": "npm",
       "script": "build:agent:dev",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TOKITOKI_BASE_URL": "http://localhost:9093",
+          "TOKITOKI_DATA_DIR": ".tokitoki-dev"
+        }
+      }
     },
     {
       "label": "prelaunch",

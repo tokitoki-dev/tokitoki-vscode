@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { Logger } from './logger';
 import { readProjectName } from './projectFile';
-import { TOKITOKI_BASE_URL } from './serverUrl';
+import { TOKITOKI_BASE_URL } from './buildConfig';
 import { StatsDaily, StatsReport, TokitokiCli } from './tokitokiCli';
 
 /** Days of local history the panel reads, and the only window it ever shows.

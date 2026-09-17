@@ -4,7 +4,7 @@ import { ActivityTracker, TrackedHeartbeat } from './activityTracker';
 import { ExtensionConfig, readConfig } from './config';
 import { Logger } from './logger';
 import { PROJECT_FILE_NAME, readProjectName, writeProjectName } from './projectFile';
-import { TOKITOKI_BASE_URL } from './serverUrl';
+import { TOKITOKI_BASE_URL, TOKITOKI_DATA_DIR } from './buildConfig';
 import { StatsViewProvider } from './statsView';
 import { maskApiKey, TokitokiCli, TokitokiCliError } from './tokitokiCli';
 
@@ -65,7 +65,7 @@ class TokitokiExtension implements vscode.Disposable {
 
   public async initialize(): Promise<void> {
     this.logger.info(`Tokitoki extension activated from ${this.context.extensionPath}`);
-    this.logger.info(`Server: ${TOKITOKI_BASE_URL}`);
+    this.logger.info(`Server: ${TOKITOKI_BASE_URL}, data dir: ~/${TOKITOKI_DATA_DIR}`);
     this.reloadConfig();
 
     // Seed the shared CLI before the first invocation so everything binds to

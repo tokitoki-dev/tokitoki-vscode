@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { TOKITOKI_BASE_URL } from './serverUrl';
+import { TOKITOKI_DATA_DIR } from './buildConfig';
 
 // A single CLI call has no business running longer than this. Long enough for
 // a slow first sync on a bad network, short enough that a wedged process does
@@ -110,10 +110,15 @@ export class TokitokiCli {
    * The CLI shared by every Tokitoki client on this machine. The location is
    * a contract documented in tokitoki-cli/README.md: resolve it first and
    * fall back to the bundled copy only when it is missing.
+   *
+   * The directory is the one this build was stamped with (`.tokitoki` for a
+   * release, `.tokitoki-dev` for a local build), which is also the directory
+   * the bundled CLI owns. A dev build therefore never runs, seeds or updates
+   * the installed production CLI, and never touches its API key or queue.
    */
   public static sharedBinaryPath(): string {
     const name = process.platform === 'win32' ? 'tokitoki.exe' : 'tokitoki';
-    return path.join(os.homedir(), '.tokitoki', 'bin', name);
+    return path.join(os.homedir(), TOKITOKI_DATA_DIR, 'bin', name);
   }
 
   public bundledBinaryPath(): string {
@@ -293,10 +298,10 @@ export class TokitokiCli {
 
   private runBinary(executable: string, args: string[]): Promise<CommandResult> {
     const command = [executable, ...args].join(' ');
-    // The server is fixed at build time and passed explicitly on every call:
-    // neither the ambient environment nor a user setting gets to redirect
-    // where the API key and usage data are sent.
-    const env = { ...process.env, TOKITOKI_BASE_URL };
+    // Nothing about where the CLI reports or keeps state is passed here: the
+    // binary carries both as build stamps and reads neither from the
+    // environment (tokitoki-cli/Makefile), so no setting and no inherited
+    // variable can redirect where the API key and usage data are sent.
 
     // No cwd: the CLI resolves everything it touches from os.UserHomeDir(),
     // so it has none. Pinning one to extensionPath only added a way to fail —
@@ -308,7 +313,6 @@ export class TokitokiCli {
         executable,
         args,
         {
-          env,
           timeout: COMMAND_TIMEOUT_MS,
           windowsHide: true,
           maxBuffer: 1024 * 1024,

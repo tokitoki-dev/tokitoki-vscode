@@ -22,6 +22,14 @@ const DEBOUNCE_MS = 50;
  * Bursty events (typing, selection) coalesce through a short debounce; the
  * throttler then lets one through per interval unless the file, category, or
  * write flag forces it.
+ *
+ * Activity is anything the user does in the window, not only edits: reading
+ * (scrolling), coming back to the window, switching tabs — including to an AI
+ * chat panel — and using the terminal all count. Every one of these is a
+ * signal that the user is here; the throttler keeps them to one heartbeat per
+ * file per interval, so more sources mean better coverage, not more events.
+ * What happens inside a webview (typing into a chat panel) raises no event at
+ * all, so that time is only covered when it is bracketed by these.
  */
 export class ActivityTracker implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
@@ -30,6 +38,14 @@ export class ActivityTracker implements vscode.Disposable {
   private pendingWrite = false;
   private isDebugging = false;
   private isCompiling = false;
+  /**
+   * The text editor the last heartbeat was attributed to. A webview tab (an
+   * AI chat panel opened as an editor) or the terminal leaves
+   * `activeTextEditor` undefined while the user is plainly working on the
+   * file they just left, so activity there is attributed to that file rather
+   * than dropped.
+   */
+  private lastEditor: vscode.TextEditor | undefined;
 
   constructor(private readonly emit: (heartbeat: TrackedHeartbeat) => void) {}
 
@@ -46,6 +62,20 @@ export class ActivityTracker implements vscode.Disposable {
       }),
       vscode.workspace.onDidChangeTextDocument(() => this.onEvent(false)),
       vscode.window.onDidChangeActiveTextEditor(() => this.onEvent(false)),
+      vscode.window.onDidChangeTextEditorVisibleRanges(() => this.onEvent(false)),
+      vscode.window.tabGroups.onDidChangeTabs(() => this.onEvent(false)),
+      vscode.window.onDidChangeWindowState((state) => {
+        if (state.focused) {
+          this.onEvent(false);
+        }
+      }),
+      vscode.window.onDidOpenTerminal(() => this.onEvent(false)),
+      vscode.window.onDidChangeActiveTerminal(() => this.onEvent(false)),
+      vscode.window.onDidChangeTerminalState(() => this.onEvent(false)),
+      // Every command run in an integrated terminal (shell integration, on by
+      // default for bash/zsh/pwsh). Keystrokes inside a terminal raise no
+      // stable event; the command they add up to does.
+      vscode.window.onDidStartTerminalShellExecution(() => this.onEvent(false)),
       vscode.workspace.onDidSaveTextDocument(() => this.onEvent(true)),
       vscode.debug.onDidStartDebugSession(() => {
         this.isDebugging = true;
@@ -75,6 +105,7 @@ export class ActivityTracker implements vscode.Disposable {
       this.debounceTimer = undefined;
     }
     this.pendingWrite = false;
+    this.lastEditor = undefined;
     for (const disposable of this.disposables.splice(0)) {
       disposable.dispose();
     }
@@ -100,7 +131,7 @@ export class ActivityTracker implements vscode.Disposable {
   }
 
   private flush(isWrite: boolean): void {
-    const editor = vscode.window.activeTextEditor;
+    const editor = this.currentEditor();
     const document = editor?.document;
     if (!editor || !document || !ALLOWED_SCHEMES.includes(document.uri.scheme)) {
       return;
@@ -109,6 +140,7 @@ export class ActivityTracker implements vscode.Disposable {
     if (!entity) {
       return;
     }
+    this.lastEditor = editor;
 
     const category = this.isDebugging ? 'debugging' : this.isCompiling ? 'building' : 'coding';
     const now = Date.now();
@@ -130,5 +162,18 @@ export class ActivityTracker implements vscode.Disposable {
       cursorPosition: editor.selection.start.character + 1,
       linesInFile: document.lineCount,
     });
+  }
+
+  /** The active text editor, or the one the user was last in when no text
+   * editor is active. A closed document is no longer anyone's work. */
+  private currentEditor(): vscode.TextEditor | undefined {
+    const active = vscode.window.activeTextEditor;
+    if (active) {
+      return active;
+    }
+    if (this.lastEditor && !this.lastEditor.document.isClosed) {
+      return this.lastEditor;
+    }
+    return undefined;
   }
 }

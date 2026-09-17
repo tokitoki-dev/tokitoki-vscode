@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.9
+
+- The status bar shows **today's active time for the project the window has
+  open** — the account total in a window without a folder — and the tooltip
+  lists both with today's tokens. The figure comes from the server, so every
+  machine with the same key shows the same number; while offline it keeps
+  the last one. `tokitoki.statusBar.showTime` turns the figure off and leaves
+  the icon.
+- **More activity counts.** Scrolling, switching tabs (including to an AI
+  chat panel), returning to the window, using the terminal (open, switch,
+  every command run), notebook edits, and creating, renaming or deleting
+  files all keep the clock running. Time in a chat panel or the terminal is
+  credited to the file you were last in.
+- **Jupyter notebooks are tracked.** A cell's activity is credited to its
+  `.ipynb` with the cell's language; previously notebooks recorded nothing.
+- Heartbeats carry VS Code's own **language** — shebang scripts, files
+  without an extension and custom associations no longer show as Unknown —
+  and the **lines you typed** yourself, kept apart from what agents and
+  completions wrote.
+- Reviewing a diff is recorded as **code reviewing** rather than coding.
+- Bundled CLI updated to v0.1.9.
+
 ## 0.1.8
 
 - New **Usage Stats** view in the activity bar shows your stats without

@@ -93,9 +93,19 @@ export interface TodayReport {
   total_tokens: number;
   /** Ready to display, e.g. "3h 23m". */
   text: string;
+  /** The same day narrowed to the project asked for; absent when none was,
+   * or when the cached answer was about another project. */
+  project?: TodayProject;
   /** Served from the CLI's cache because the server was unreachable. */
   stale: boolean;
   fetched_at: string;
+}
+
+export interface TodayProject {
+  name: string;
+  active_seconds: number;
+  total_tokens: number;
+  text: string;
 }
 
 export class TokitokiCliError extends Error {
@@ -309,8 +319,12 @@ export class TokitokiCli {
 
   /** Today's figure from the server, or the CLI's last cached answer marked
    * stale when offline. No key throws with isMissingApiKey set. */
-  public async today(): Promise<TodayReport> {
-    const result = await this.run(['today']);
+  public async today(project?: string): Promise<TodayReport> {
+    const args = ['today'];
+    if (project) {
+      args.push('--project', project);
+    }
+    const result = await this.run(args);
     try {
       return JSON.parse(result.stdout) as TodayReport;
     } catch {

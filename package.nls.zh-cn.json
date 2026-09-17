@@ -8,5 +8,5 @@
   "command.openSettings.title": "设置",
   "view.stats.name": "使用统计",
   "config.statusBar.enabled.description": "显示 Tokitoki 状态栏项。",
-  "config.statusBar.showTime.description": "在状态栏项中显示今天的活动时长。关闭后只显示图标，时长移到悬停提示中。"
+  "config.statusBar.showTime.description": "在状态栏项中显示当前窗口项目今天的活动时长（没有文件夹的窗口显示账号总数）。关闭后只显示图标，数字移到悬停提示中。"
 }

@@ -6,6 +6,7 @@ import { Logger } from './logger';
 import { PROJECT_FILE_NAME, readProjectName, writeProjectName } from './projectFile';
 import { TOKITOKI_BASE_URL, TOKITOKI_DATA_DIR } from './buildConfig';
 import { StatsViewProvider } from './statsView';
+import { windowProjectName } from './windowProject';
 import { formatTokens } from './format';
 import { maskApiKey, TodayReport, TokitokiCli, TokitokiCliError } from './tokitokiCli';
 
@@ -29,8 +30,6 @@ class TokitokiExtension implements vscode.Disposable {
   private syncTimer: NodeJS.Timeout | undefined;
   private syncRunning = false;
   private heartbeatChain: Promise<void> = Promise.resolve();
-  private lastHeartbeatAt: Date | undefined;
-  private lastSyncAt: Date | undefined;
   /** Today's figure as the server last reported it — the status bar's text. */
   private today: TodayReport | undefined;
   private todayFetchedAt = 0;
@@ -153,7 +152,6 @@ class TokitokiExtension implements vscode.Disposable {
       try {
         const result = await this.createCli().sync();
         this.logCommandOutput(result.stdout, result.stderr);
-        this.lastSyncAt = new Date();
         this.updateReadyStatus();
         // The sync just uploaded the AI events; the figure moved.
         void this.refreshToday(true);
@@ -394,7 +392,6 @@ class TokitokiExtension implements vscode.Disposable {
           linesAdded: heartbeat.linesAdded,
           linesRemoved: heartbeat.linesRemoved,
         });
-        this.lastHeartbeatAt = new Date();
         this.updateReadyStatus();
         this.logger.debug(`Heartbeat sent: ${heartbeat.entity} (${heartbeat.category})`);
         void this.refreshToday(false);
@@ -509,7 +506,7 @@ class TokitokiExtension implements vscode.Disposable {
     this.todayRefreshing = true;
     this.todayFetchedAt = now;
     try {
-      this.today = await this.createCli().today();
+      this.today = await this.createCli().today(await windowProjectName());
       this.updateReadyStatus();
     } catch (error) {
       if (error instanceof TokitokiCliError && error.isMissingApiKey) {
@@ -527,34 +524,44 @@ class TokitokiExtension implements vscode.Disposable {
   }
 
   private updateReadyStatus(): void {
-    const parts = [vscode.l10n.t('Tokitoki: tracking coding activity. Click to open your dashboard.')];
     const today = this.apiKeyMissing ? undefined : this.today;
-    if (today) {
-      parts.push(vscode.l10n.t('Today: {0} active, {1} tokens.', today.text, formatTokens(today.total_tokens)));
-      parts.push(
-        today.scope === 'team'
-          ? vscode.l10n.t('Scope: team {0}.', today.team_name ?? '')
-          : vscode.l10n.t('Scope: personal.'),
-      );
-      if (today.stale) {
-        parts.push(vscode.l10n.t('Offline: showing the last figure the server gave.'));
-      }
-    } else {
-      parts.push(vscode.l10n.t('Set an API key to see today\'s active time here.'));
-    }
-    if (this.lastHeartbeatAt) {
-      parts.push(vscode.l10n.t('Last heartbeat: {0}.', this.lastHeartbeatAt.toLocaleString()));
-    }
-    if (this.lastSyncAt) {
-      parts.push(vscode.l10n.t('Last AI usage sync: {0}.', this.lastSyncAt.toLocaleString()));
-    }
-    const text = today && this.config.statusBarShowTime
-      ? `$(tokitoki-logo) ${today.text}`
+    // The figure in the bar is this window's project when it has one —
+    // "how long on this today" — and the account total in a window with no
+    // folder, where there is no "this".
+    const figure = today?.project?.text ?? today?.text;
+    const text = figure && this.config.statusBarShowTime
+      ? `$(tokitoki-logo) ${figure}`
       : '$(tokitoki-logo) Tokitoki';
-    this.updateStatus(text, parts.join(' '));
+
+    // The tooltip is the numbers and nothing else: one line per figure,
+    // then only what changes their meaning (a team scope, an outage).
+    const tooltip = new vscode.MarkdownString();
+    const line = (value: string) => {
+      if (tooltip.value) {
+        tooltip.appendMarkdown('\n\n');
+      }
+      tooltip.appendText(value);
+    };
+    if (today) {
+      if (today.project) {
+        line(`${today.project.name} · ${today.project.text} · ${vscode.l10n.t('{0} tokens', formatTokens(today.project.total_tokens))}`);
+      }
+      line(`${vscode.l10n.t('All projects')} · ${today.text} · ${vscode.l10n.t('{0} tokens', formatTokens(today.total_tokens))}`);
+      if (today.scope === 'team') {
+        line(vscode.l10n.t('Team {0}', today.team_name ?? ''));
+      }
+      if (today.stale) {
+        line(vscode.l10n.t('Offline — last synced figure'));
+      }
+    } else if (this.apiKeyMissing) {
+      line(vscode.l10n.t('Set an API key to see today\'s active time here.'));
+    } else {
+      line(vscode.l10n.t('Tokitoki: tracking coding activity.'));
+    }
+    this.updateStatus(text, tooltip);
   }
 
-  private updateStatus(text: string, tooltip: string): void {
+  private updateStatus(text: string, tooltip: string | vscode.MarkdownString): void {
     this.statusBar.text = text;
     this.statusBar.tooltip = tooltip;
     if (this.config.statusBarEnabled) {

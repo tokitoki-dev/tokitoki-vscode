@@ -88,6 +88,16 @@ for (const [goos, goarch, filename] of selected) {
   if (version) {
     makeArgs.push(`VERSION=${version}`);
   }
+  // The same two variables generate-build-config.js bakes into the extension.
+  // Passed through when set so the binary and the extension that looks for
+  // its shared copy are stamped from one source; unset, the CLI Makefile's
+  // own local-build defaults apply (the dev server, .tokitoki-dev).
+  if (process.env.TOKITOKI_BASE_URL) {
+    makeArgs.push(`SERVER_URL=${process.env.TOKITOKI_BASE_URL}`);
+  }
+  if (process.env.TOKITOKI_DATA_DIR) {
+    makeArgs.push(`DATA_DIR=${process.env.TOKITOKI_DATA_DIR}`);
+  }
   const result = childProcess.spawnSync('make', makeArgs, {
     cwd: cliDir,
     stdio: 'inherit',

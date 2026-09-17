@@ -11,10 +11,31 @@ editor events -> throttler -> tokitoki heartbeat --entity FILE ...
                      local queue (~/.tokitoki) -> Tokitoki server
 ```
 
-- Selection changes, edits, tab switches, saves, debug and task events feed a
-  50ms debounce, then a throttler: one heartbeat per file every 2 minutes,
-  with writes and file/category switches passing immediately. The same rule
-  every Tokitoki editor plugin uses.
+- Selection changes, edits, scrolling, tab switches (including to an AI chat
+  panel), window focus, terminal use (open, switch, every command run),
+  notebook edits and selection, saves, file create/rename/delete, debug and
+  task events feed a 50ms debounce, then a throttler: one heartbeat per file
+  every 2 minutes, with writes and file/category switches passing
+  immediately. The same rule every Tokitoki editor plugin uses. A notebook
+  cell is credited to its .ipynb with the cell's language. When no editor is
+  active (a chat panel or the terminal has focus) the heartbeat goes to what
+  the user was last in. Typing inside a webview raises no VS Code event, so
+  that time only counts when bracketed by the events above.
+- The heartbeat carries VS Code's language id translated to the shared
+  language vocabulary (src/language.ts); an id without a translation is left
+  out and the CLI detects the language from the path.
+- Category: `debugging` during a debug session, `building` during a
+  non-background task, `code reviewing` while the active tab is a diff (git,
+  an agent's proposed edit), a pull request document or a diff webview
+  (Codex), otherwise `coding`.
+- Lines: every edit event is classified by shape (src/lineChanges.ts) — a
+  keystroke, Enter, or a deletion is typed; a block insert or a multi-change
+  event (paste, completion, formatter, an agent rewriting the file) is not
+  and counts for nothing. Typed lines accumulate per file and ride that
+  file's next heartbeat as `--lines-added/--lines-removed`; closing a file
+  with lines still pending sends one last heartbeat for them. The server
+  files every line on an IDE heartbeat as human work, next to the diffs
+  agents report from their own logs.
 - The CLI detects language and applies `.tokitoki` project files centrally,
   and queues events locally when offline.
 
@@ -33,6 +54,12 @@ seeds the shared location when the shared binary is missing or reports an
 older release version — staged and renamed into place, never a downgrade —
 then asks the CLI to update itself at most once a day.
 
+The `.tokitoki` segment is a build stamp, not a constant: a local build is
+stamped `.tokitoki-dev`, the same directory the CLI it bundles owns, so it
+looks for, seeds and runs `~/.tokitoki-dev/bin/tokitoki` and never touches
+the production CLI, API key or queue in `~/.tokitoki`. The activation log
+prints both the server and the data dir a build was stamped with.
+
 ## Debug
 
 Never package a VSIX to iterate — that is the release path, not the dev loop:
@@ -49,8 +76,9 @@ panel (live DOM/CSS editing, console). This replaces "open it in a browser":
 the webview depends on VS Code's CSS variables, `acquireVsCodeApi`, and
 `vscode.l10n`, so a plain browser tab would render a lie.
 
-The F5 tasks bake `TOKITOKI_BASE_URL=http://localhost:9093` (see
-.vscode/tasks.json), same as `make` — local runs never touch production.
+The F5 tasks bake `TOKITOKI_BASE_URL=http://localhost:9093` and
+`TOKITOKI_DATA_DIR=.tokitoki-dev` (see .vscode/tasks.json), same as `make` —
+local runs never touch production, neither the server nor the state.
 `make` (install into the real VS Code) is for final verification only.
 
 ## Build and Package
@@ -72,11 +100,14 @@ one CLI binary its platform needs, and the Marketplace serves each user the
 matching package. `.build/cli/` holds all six binaries; `bin/` is the
 per-target staging area.
 
-The server URL is baked in at compile time by
-`scripts/generate-server-url.js`. The Makefile always bakes the local dev
-server (`http://localhost:9093`); production URLs only come out of CI, where
-the variable is unset. There is no runtime override: the extension passes the
-baked-in URL to every CLI invocation, so neither a setting nor the inherited
+The server URL and the data directory are baked in at compile time by
+`scripts/generate-build-config.js` from `TOKITOKI_BASE_URL` and
+`TOKITOKI_DATA_DIR`, and the same two values stamp the CLI binary built
+alongside (`scripts/build-agent-binaries.js`). The Makefile always bakes the
+local dev server (`http://localhost:9093`) and `.tokitoki-dev`; production
+values only come out of CI, where both variables are unset. There is no
+runtime override: the CLI carries its server and data dir as build stamps and
+reads neither from the environment, so neither a setting nor the inherited
 environment can redirect where API keys and usage data go.
 
 CI and releases bundle the CLI release pinned in

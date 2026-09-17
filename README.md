@@ -4,6 +4,8 @@ Tokitoki automatically tracks your coding activity in VS Code and syncs your
 AI agent usage — Claude Code, Copilot, Gemini, and a dozen more — into one
 dashboard at [tokitoki.dev](https://tokitoki.dev).
 
+![Tokitoki dashboard: coding time for the week, the daily trend, today against your average, and daily time split by project](images/dashboard-activity.png)
+
 ## Features
 
 - **Automatic time tracking** — just code. Tokitoki records which files,

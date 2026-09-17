@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { TOKITOKI_BASE_URL } from './serverUrl';
+import { TOKITOKI_DATA_DIR } from './buildConfig';
 
 // A single CLI call has no business running longer than this. Long enough for
 // a slow first sync on a bad network, short enough that a wedged process does
@@ -31,12 +31,16 @@ export interface HeartbeatArgs {
   editor: string;
   project?: string;
   projectFolder?: string;
+  /** Omitted, the CLI detects one from the entity's path. */
+  language?: string;
   plugin?: string;
   category?: string;
   isWrite?: boolean;
   lineNumber?: number;
   cursorPosition?: number;
   linesInFile?: number;
+  linesAdded?: number;
+  linesRemoved?: number;
 }
 
 /** The JSON report of `tokitoki stats` (tokitoki-cli internal/usagestats).
@@ -78,6 +82,32 @@ export interface StatsGroup {
   active_seconds: number;
 }
 
+/** The JSON of `tokitoki today` (tokitoki-cli internal/statusbar): today's
+ * figure as the server computes it for the account behind the key. */
+export interface TodayReport {
+  date: string;
+  timezone: string;
+  scope: 'personal' | 'team';
+  team_name?: string;
+  active_seconds: number;
+  total_tokens: number;
+  /** Ready to display, e.g. "3h 23m". */
+  text: string;
+  /** The same day narrowed to the project asked for; absent when none was,
+   * or when the cached answer was about another project. */
+  project?: TodayProject;
+  /** Served from the CLI's cache because the server was unreachable. */
+  stale: boolean;
+  fetched_at: string;
+}
+
+export interface TodayProject {
+  name: string;
+  active_seconds: number;
+  total_tokens: number;
+  text: string;
+}
+
 export class TokitokiCliError extends Error {
   public readonly stdout: string;
   public readonly stderr: string;
@@ -110,10 +140,15 @@ export class TokitokiCli {
    * The CLI shared by every Tokitoki client on this machine. The location is
    * a contract documented in tokitoki-cli/README.md: resolve it first and
    * fall back to the bundled copy only when it is missing.
+   *
+   * The directory is the one this build was stamped with (`.tokitoki` for a
+   * release, `.tokitoki-dev` for a local build), which is also the directory
+   * the bundled CLI owns. A dev build therefore never runs, seeds or updates
+   * the installed production CLI, and never touches its API key or queue.
    */
   public static sharedBinaryPath(): string {
     const name = process.platform === 'win32' ? 'tokitoki.exe' : 'tokitoki';
-    return path.join(os.homedir(), '.tokitoki', 'bin', name);
+    return path.join(os.homedir(), TOKITOKI_DATA_DIR, 'bin', name);
   }
 
   public bundledBinaryPath(): string {
@@ -206,6 +241,9 @@ export class TokitokiCli {
     if (args.projectFolder) {
       command.push('--project-folder', args.projectFolder);
     }
+    if (args.language) {
+      command.push('--language', args.language);
+    }
     if (args.plugin) {
       command.push('--plugin', args.plugin);
     }
@@ -223,6 +261,12 @@ export class TokitokiCli {
     }
     if (args.linesInFile && args.linesInFile > 0) {
       command.push('--lines-in-file', String(args.linesInFile));
+    }
+    if (args.linesAdded && args.linesAdded > 0) {
+      command.push('--lines-added', String(args.linesAdded));
+    }
+    if (args.linesRemoved && args.linesRemoved > 0) {
+      command.push('--lines-removed', String(args.linesRemoved));
     }
     return this.run(command);
   }
@@ -273,6 +317,21 @@ export class TokitokiCli {
     }
   }
 
+  /** Today's figure from the server, or the CLI's last cached answer marked
+   * stale when offline. No key throws with isMissingApiKey set. */
+  public async today(project?: string): Promise<TodayReport> {
+    const args = ['today'];
+    if (project) {
+      args.push('--project', project);
+    }
+    const result = await this.run(args);
+    try {
+      return JSON.parse(result.stdout) as TodayReport;
+    } catch {
+      throw new Error(`Unreadable response from 'tokitoki today': ${result.stdout.trim() || '(empty)'}`);
+    }
+  }
+
   private async binaryVersion(executable: string): Promise<number[] | undefined> {
     try {
       const result = await this.runBinary(executable, ['version']);
@@ -293,10 +352,10 @@ export class TokitokiCli {
 
   private runBinary(executable: string, args: string[]): Promise<CommandResult> {
     const command = [executable, ...args].join(' ');
-    // The server is fixed at build time and passed explicitly on every call:
-    // neither the ambient environment nor a user setting gets to redirect
-    // where the API key and usage data are sent.
-    const env = { ...process.env, TOKITOKI_BASE_URL };
+    // Nothing about where the CLI reports or keeps state is passed here: the
+    // binary carries both as build stamps and reads neither from the
+    // environment (tokitoki-cli/Makefile), so no setting and no inherited
+    // variable can redirect where the API key and usage data are sent.
 
     // No cwd: the CLI resolves everything it touches from os.UserHomeDir(),
     // so it has none. Pinning one to extensionPath only added a way to fail —
@@ -308,7 +367,6 @@ export class TokitokiCli {
         executable,
         args,
         {
-          env,
           timeout: COMMAND_TIMEOUT_MS,
           windowsHide: true,
           maxBuffer: 1024 * 1024,

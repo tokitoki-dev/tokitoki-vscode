@@ -7,7 +7,12 @@
 #   make build      Build the VSIX for this machine
 #   make clean      Remove everything generated
 
+# Both stamps go into the extension (scripts/generate-build-config.js) and
+# into the CLI it bundles (scripts/build-agent-binaries.js), so the shared
+# binary a dev build looks for, seeds and runs is ~/.tokitoki-dev/bin/tokitoki
+# — never the installed production CLI in ~/.tokitoki.
 export TOKITOKI_BASE_URL := http://localhost:9093
+export TOKITOKI_DATA_DIR := .tokitoki-dev
 
 VERSION := $(shell node -p "require('./package.json').version")
 
@@ -37,7 +42,7 @@ VSIX := tokitoki-vscode-$(HOST_TARGET)-$(VERSION).vsix
 # "dev" unless ../tokitoki-cli HEAD sits on an exact vX.Y.Z tag, and a "dev"
 # CLI declines to self-update — see scripts/build-agent-binaries.js.
 build:
-	@echo "==> Server: $(TOKITOKI_BASE_URL)"
+	@echo "==> Server: $(TOKITOKI_BASE_URL), data dir: ~/$(TOKITOKI_DATA_DIR)"
 	rm -rf .build/cli
 	node scripts/build-agent-binaries.js $(HOST_TARGET)
 	scripts/stage-cli.sh $(HOST_TARGET)
@@ -48,4 +53,4 @@ install: build
 	code --install-extension $(VSIX) --force
 
 clean:
-	rm -rf out bin .build *.vsix src/serverUrl.ts
+	rm -rf out bin .build *.vsix src/buildConfig.ts

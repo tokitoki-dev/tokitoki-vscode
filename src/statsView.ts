@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 
 import { Logger } from './logger';
-import { readProjectName } from './projectFile';
-import { TOKITOKI_BASE_URL } from './serverUrl';
+import { windowProjectName } from './windowProject';
+import { TOKITOKI_BASE_URL } from './buildConfig';
+import { formatTokens } from './format';
 import { StatsDaily, StatsReport, TokitokiCli } from './tokitokiCli';
 
 /** Days of local history the panel reads, and the only window it ever shows.
@@ -122,7 +123,7 @@ export class StatsViewProvider implements vscode.WebviewViewProvider {
       // folder's pinned `.tokitoki` name when set and the folder name
       // otherwise. `ALL_PROJECTS` asks for no sub-report at all. One CLI call
       // returns the global report with that sub-report nested inside it.
-      const windowProject = await this.currentProjectName();
+      const windowProject = await windowProjectName();
       const active = this.selected ?? windowProject;
       const projectName = active === ALL_PROJECTS ? undefined : active;
       let report: StatsReport;
@@ -152,18 +153,6 @@ export class StatsViewProvider implements vscode.WebviewViewProvider {
       );
     } finally {
       this.refreshing = false;
-    }
-  }
-
-  private async currentProjectName(): Promise<string | undefined> {
-    const folder = vscode.workspace.workspaceFolders?.[0];
-    if (!folder) {
-      return undefined;
-    }
-    try {
-      return (await readProjectName(folder.uri.fsPath)) || folder.name;
-    } catch {
-      return folder.name;
     }
   }
 
@@ -531,19 +520,6 @@ function tile(label: string, value: string, color: string): string {
 
 function banner(text: string): string {
   return `<div class="banner">${escapeHtml(text)}</div>`;
-}
-
-function formatTokens(tokens: number): string {
-  if (tokens >= 1_000_000_000) {
-    return `${(tokens / 1_000_000_000).toFixed(1)}B`;
-  }
-  if (tokens >= 1_000_000) {
-    return `${(tokens / 1_000_000).toFixed(1)}M`;
-  }
-  if (tokens >= 1_000) {
-    return `${(tokens / 1_000).toFixed(1)}K`;
-  }
-  return String(tokens);
 }
 
 function formatDuration(seconds: number): string {

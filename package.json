@@ -2,7 +2,7 @@
   "name": "tokitoki-vscode",
   "displayName": "Tokitoki",
   "description": "%extension.description%",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "publisher": "tokitoki",
   "license": "Apache-2.0",
   "engines": {
@@ -43,7 +43,7 @@
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && npm run check:l10n && node --test \"out/test/*.test.js\"",
     "package": "vsce package --no-dependencies --allow-missing-repository",
-    "generate": "node scripts/generate-server-url.js",
+    "generate": "node scripts/generate-build-config.js",
     "publish:open-vsx": "sh scripts/publish-open-vsx.sh"
   },
   "contributes": {
@@ -155,6 +155,12 @@
           "default": true,
           "scope": "application",
           "description": "%config.statusBar.enabled.description%"
+        },
+        "tokitoki.statusBar.showTime": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "%config.statusBar.showTime.description%"
         }
       }
     }

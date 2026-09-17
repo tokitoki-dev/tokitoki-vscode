@@ -7,5 +7,6 @@
   "command.refreshStats.title": "Refresh Stats",
   "command.openSettings.title": "Settings",
   "view.stats.name": "Usage Stats",
-  "config.statusBar.enabled.description": "Show the Tokitoki status bar item."
+  "config.statusBar.enabled.description": "Show the Tokitoki status bar item.",
+  "config.statusBar.showTime.description": "Show today's active time for this window's project in the status bar item (the account total in a window without a folder). Off, the item shows only the icon and the figures move to its tooltip."
 }

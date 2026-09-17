@@ -20,9 +20,6 @@
   "Unable to write the {0} file in {1}.": "{1} に {0} ファイルを書き込めません。",
   "Open a folder before setting a Tokitoki project name.": "Tokitoki のプロジェクト名を設定する前にフォルダーを開いてください。",
   "Select the folder to name": "名前を設定するフォルダーを選択",
-  "Tokitoki: tracking coding activity. Click to open your dashboard.": "Tokitoki：コーディング活動を記録中。クリックしてダッシュボードを開きます。",
-  "Last heartbeat: {0}.": "最終ハートビート：{0}。",
-  "Last AI usage sync: {0}.": "最終 AI 利用状況同期：{0}。",
   "Usage stats need a newer Tokitoki CLI. It updates itself within a day, or run: tokitoki update": "利用状況の統計には新しい Tokitoki CLI が必要です。1 日以内に自動更新されます。手動の場合は tokitoki update を実行してください",
   "No activity recorded yet. Stats appear as you code and use AI tools.": "まだ活動が記録されていません。コーディングや AI ツールの利用を始めると統計が表示されます。",
   "Top models": "モデル別ランキング",
@@ -40,5 +37,10 @@
   "d": "日",
   "Last {0} days": "直近 {0} 日間",
   "Projects": "プロジェクト",
-  "{0} total": "全 {0} 件"
+  "{0} total": "全 {0} 件",
+  "Set an API key to see today's active time here.": "API キーを設定すると今日のアクティブ時間がここに表示されます。",
+  "{0} tokens": "{0} トークン",
+  "Team {0}": "チーム {0}",
+  "Offline — last synced figure": "オフライン、最後に同期した数値",
+  "Tokitoki: tracking coding activity.": "Tokitoki：コーディング活動を記録中。"
 }

@@ -1,5 +1,5 @@
 {
-  "extension.description": "Automatic coding time tracking plus AI usage analytics for Claude Code, Codex, Copilot, and more — on your Tokitoki dashboard.",
+  "extension.description": "Automatic coding time tracking and AI usage & token cost tracking for Claude Code, Codex, Copilot, Cursor, and more. An open-source WakaTime alternative with one dashboard.",
   "command.setApiKey.title": "Set API Key",
   "command.openDashboard.title": "Open Dashboard",
   "command.showApiKeyStatus.title": "Show API Key Status",

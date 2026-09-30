@@ -1,5 +1,5 @@
 {
-  "extension.description": "自动记录编码时长，并统计 Claude Code、Codex、Copilot 等工具的 AI 使用情况 — 尽在你的 Tokitoki 仪表板。",
+  "extension.description": "自动记录编码时长，并统计 Claude Code、Codex、Copilot、Cursor 等 AI 工具的用量与 Token 成本。开源的 WakaTime 替代品，一个仪表板看全部。",
   "command.setApiKey.title": "设置 API 密钥",
   "command.openDashboard.title": "打开仪表板",
   "command.showApiKeyStatus.title": "查看 API 密钥状态",

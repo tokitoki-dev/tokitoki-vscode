@@ -2,7 +2,7 @@
   "name": "tokitoki-vscode",
   "displayName": "Tokitoki — Coding Time Tracking & AI Usage",
   "description": "%extension.description%",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "publisher": "tokitoki",
   "license": "Apache-2.0",
   "engines": {

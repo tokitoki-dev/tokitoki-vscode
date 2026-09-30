@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.10
+
+- Bundled CLI updated to v0.1.10: it keeps a rotating run log under
+  `~/.tokitoki`, reports errors that will not fix themselves so they can be
+  fixed on our side, and labels each machine by its hostname without the
+  network suffix, so one computer no longer shows up as several. Set
+  `TOKITOKI_HOSTNAME` to choose the label yourself.
+- The Marketplace listing now says what the extension does: coding time
+  tracking and AI usage for Claude Code, Codex, Copilot, Cursor and more.
+
 ## 0.1.9
 
 - The status bar shows **today's active time for the project the window has

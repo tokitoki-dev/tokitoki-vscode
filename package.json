@@ -1,28 +1,48 @@
 {
   "name": "tokitoki-vscode",
-  "displayName": "Tokitoki",
+  "displayName": "Tokitoki — Coding Time Tracking & AI Usage",
   "description": "%extension.description%",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "publisher": "tokitoki",
   "license": "Apache-2.0",
   "engines": {
     "vscode": "^1.92.0"
   },
   "categories": [
-    "Other",
-    "Visualization"
+    "Visualization",
+    "AI"
   ],
   "keywords": [
     "time tracking",
+    "time tracker",
+    "coding time",
+    "code time",
+    "codetime",
+    "wakatime",
+    "wakatime alternative",
+    "coding stats",
+    "programming stats",
+    "developer productivity",
     "productivity",
     "analytics",
     "metrics",
-    "ai",
-    "claude code",
-    "copilot",
-    "codex",
+    "dashboard",
+    "ai usage",
+    "ai cost",
+    "token usage",
     "token cost",
-    "wakatime"
+    "llm cost",
+    "claude code",
+    "claude code usage",
+    "ccusage",
+    "codex",
+    "copilot",
+    "copilot usage",
+    "cursor",
+    "gemini",
+    "opencode",
+    "amp",
+    "timer"
   ],
   "extensionKind": [
     "workspace"

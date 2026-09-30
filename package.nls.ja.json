@@ -1,5 +1,5 @@
 {
-  "extension.description": "コーディング時間を自動計測し、Claude Code、Codex、Copilot などの AI 利用状況を分析 — Tokitoki ダッシュボードで確認できます。",
+  "extension.description": "コーディング時間を自動計測し、Claude Code、Codex、Copilot、Cursor などの AI 利用量とトークンコストを可視化。オープンソースの WakaTime 代替、ひとつのダッシュボードで。",
   "command.setApiKey.title": "API キーを設定",
   "command.openDashboard.title": "ダッシュボードを開く",
   "command.showApiKeyStatus.title": "API キーの状態を表示",

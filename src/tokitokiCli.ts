@@ -29,7 +29,9 @@ export interface HeartbeatArgs {
    * server, which can name a fork that did not exist when this build shipped.
    */
   editor: string;
-  project?: string;
+  /** Offered, never imposed: `--project` would override the repository the
+   * CLI detects, and is left to editors released before it detected any. */
+  alternateProject?: string;
   projectFolder?: string;
   /** Omitted, the CLI detects one from the entity's path. */
   language?: string;
@@ -106,6 +108,13 @@ export interface TodayProject {
   active_seconds: number;
   total_tokens: number;
   text: string;
+}
+
+/** The JSON of `tokitoki project` (tokitoki-cli internal/project): the
+ * project a heartbeat from this folder is filed under. */
+export interface ProjectIdentity {
+  project: string;
+  project_path: string;
 }
 
 export class TokitokiCliError extends Error {
@@ -235,8 +244,8 @@ export class TokitokiCli {
       '--time', args.timeSeconds.toFixed(3),
       '--editor', args.editor,
     ];
-    if (args.project) {
-      command.push('--project', args.project);
+    if (args.alternateProject) {
+      command.push('--alternate-project', args.alternateProject);
     }
     if (args.projectFolder) {
       command.push('--project-folder', args.projectFolder);
@@ -315,6 +324,27 @@ export class TokitokiCli {
     } catch {
       throw new Error(`Unreadable response from 'tokitoki stats': ${result.stdout.trim() || '(empty)'}`);
     }
+  }
+
+  /** The project the CLI files this folder's heartbeats under: a pinned
+   * `.tokitoki` name, the repository around the folder, or the folder
+   * itself — `name` only when none of those says. */
+  public async project(folder: string, name?: string): Promise<ProjectIdentity> {
+    const args = ['project', '--project-folder', folder];
+    if (name) {
+      args.push('--alternate-project', name);
+    }
+    const result = await this.run(args);
+    let parsed: Partial<ProjectIdentity>;
+    try {
+      parsed = JSON.parse(result.stdout) as Partial<ProjectIdentity>;
+    } catch {
+      parsed = {};
+    }
+    if (!parsed.project) {
+      throw new Error(`Unreadable response from 'tokitoki project': ${result.stdout.trim() || '(empty)'}`);
+    }
+    return { project: parsed.project, project_path: parsed.project_path ?? '' };
   }
 
   /** Today's figure from the server, or the CLI's last cached answer marked

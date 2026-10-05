@@ -255,13 +255,14 @@ class TokitokiExtension implements vscode.Disposable {
       return;
     }
 
-    // No file, or a blank first line, means the CLI is falling back to the
-    // folder name — so that is what is in effect and what the box shows.
+    // No file, or a blank first line, means the CLI names the project
+    // itself — usually after the repository around the folder — so that is
+    // what is in effect and what the box shows.
     const pinned = await readProjectName(folder.uri.fsPath);
     const name = await vscode.window.showInputBox({
       title: vscode.l10n.t('Tokitoki Project Name'),
       prompt: vscode.l10n.t('Recorded for this folder in {0}, shared with every Tokitoki client.', PROJECT_FILE_NAME),
-      value: pinned || folder.name,
+      value: pinned || (await this.createCli().project(folder.uri.fsPath, folder.name)).project,
       ignoreFocusOut: true,
       validateInput: (value) => (value.trim() ? undefined : vscode.l10n.t('Project name is required')),
     });
@@ -269,8 +270,8 @@ class TokitokiExtension implements vscode.Disposable {
       return;
     }
     const trimmed = name.trim();
-    // Accepting the folder-name default still writes the file — that is how
-    // the name survives a rename or a checkout under a different directory.
+    // Accepting the default still writes the file — that is how the name
+    // survives a rename or a checkout under a different directory.
     if (!trimmed || trimmed === pinned) {
       return;
     }
@@ -379,7 +380,7 @@ class TokitokiExtension implements vscode.Disposable {
         await this.createCli().heartbeat({
           entity: heartbeat.entity,
           timeSeconds: heartbeat.timeSeconds,
-          project: heartbeat.project,
+          alternateProject: heartbeat.alternateProject,
           projectFolder: heartbeat.projectFolder,
           language: heartbeat.language,
           editor: this.editorName(),
@@ -506,7 +507,8 @@ class TokitokiExtension implements vscode.Disposable {
     this.todayRefreshing = true;
     this.todayFetchedAt = now;
     try {
-      this.today = await this.createCli().today(await windowProjectName());
+      const cli = this.createCli();
+      this.today = await cli.today(await windowProjectName(cli));
       this.updateReadyStatus();
     } catch (error) {
       if (error instanceof TokitokiCliError && error.isMissingApiKey) {

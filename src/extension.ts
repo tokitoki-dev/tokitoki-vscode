@@ -262,7 +262,7 @@ class TokitokiExtension implements vscode.Disposable {
     const name = await vscode.window.showInputBox({
       title: vscode.l10n.t('Tokitoki Project Name'),
       prompt: vscode.l10n.t('Recorded for this folder in {0}, shared with every Tokitoki client.', PROJECT_FILE_NAME),
-      value: pinned || (await this.createCli().project(folder.uri.fsPath, folder.name)).project,
+      value: pinned || (await this.createCli().project(folder.uri.fsPath)).project,
       ignoreFocusOut: true,
       validateInput: (value) => (value.trim() ? undefined : vscode.l10n.t('Project name is required')),
     });
@@ -380,7 +380,6 @@ class TokitokiExtension implements vscode.Disposable {
         await this.createCli().heartbeat({
           entity: heartbeat.entity,
           timeSeconds: heartbeat.timeSeconds,
-          alternateProject: heartbeat.alternateProject,
           projectFolder: heartbeat.projectFolder,
           language: heartbeat.language,
           editor: this.editorName(),

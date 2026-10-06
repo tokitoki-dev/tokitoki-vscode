@@ -7,7 +7,6 @@ import { HeartbeatThrottler } from './throttler';
 export interface TrackedHeartbeat {
   entity: string;
   timeSeconds: number;
-  alternateProject?: string;
   projectFolder?: string;
   /** The shared language name, when VS Code's id translates to one. */
   language?: string;
@@ -276,11 +275,12 @@ function notebookOf(cellDocument: vscode.TextDocument): vscode.NotebookDocument 
   );
 }
 
-/** The folder's name is only offered: the CLI names the project after the
- * repository around the file, as it does for AI agents working there. */
-function projectOf(uri: vscode.Uri): { alternateProject?: string; projectFolder?: string } {
+/** The workspace root the file is under. No name goes with it: the CLI names
+ * the project from the file and this folder, as it does for AI agents
+ * working there. */
+function projectOf(uri: vscode.Uri): { projectFolder?: string } {
   const folder = vscode.workspace.getWorkspaceFolder(uri) ?? vscode.workspace.workspaceFolders?.[0];
-  return { alternateProject: folder?.name, projectFolder: folder?.uri.fsPath };
+  return { projectFolder: folder?.uri.fsPath };
 }
 
 /** A target on disk, or nothing: every producer below goes through here, so

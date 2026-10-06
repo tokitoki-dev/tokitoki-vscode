@@ -14,5 +14,5 @@ export async function windowProjectName(cli: TokitokiCli): Promise<string | unde
   if (!folder) {
     return undefined;
   }
-  return (await cli.project(folder.uri.fsPath, folder.name)).project;
+  return (await cli.project(folder.uri.fsPath)).project;
 }

@@ -29,9 +29,9 @@ export interface HeartbeatArgs {
    * server, which can name a fork that did not exist when this build shipped.
    */
   editor: string;
-  /** Offered, never imposed: `--project` would override the repository the
-   * CLI detects, and is left to editors released before it detected any. */
-  alternateProject?: string;
+  /** The workspace root. The CLI names the project from it and the entity;
+   * `--project` would override that, and is left to editors released before
+   * it detected repositories. */
   projectFolder?: string;
   /** Omitted, the CLI detects one from the entity's path. */
   language?: string;
@@ -244,9 +244,6 @@ export class TokitokiCli {
       '--time', args.timeSeconds.toFixed(3),
       '--editor', args.editor,
     ];
-    if (args.alternateProject) {
-      command.push('--alternate-project', args.alternateProject);
-    }
     if (args.projectFolder) {
       command.push('--project-folder', args.projectFolder);
     }
@@ -328,13 +325,9 @@ export class TokitokiCli {
 
   /** The project the CLI files this folder's heartbeats under: a pinned
    * `.tokitoki` name, the repository around the folder, or the folder
-   * itself — `name` only when none of those says. */
-  public async project(folder: string, name?: string): Promise<ProjectIdentity> {
-    const args = ['project', '--project-folder', folder];
-    if (name) {
-      args.push('--alternate-project', name);
-    }
-    const result = await this.run(args);
+   * itself. */
+  public async project(folder: string): Promise<ProjectIdentity> {
+    const result = await this.run(['project', '--project-folder', folder]);
     let parsed: Partial<ProjectIdentity>;
     try {
       parsed = JSON.parse(result.stdout) as Partial<ProjectIdentity>;

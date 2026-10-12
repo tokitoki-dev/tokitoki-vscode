@@ -32,8 +32,8 @@ interface Target {
   line: number;
   column: number;
   lineCount: number;
-  /** The file is open in a diff, merge or review view: the user is reading
-   * a change, not writing one. */
+  /** The file is open in a diff or review view: the user is reading a
+   * change, not writing one. */
   reviewing: boolean;
 }
 
@@ -61,8 +61,6 @@ export class ActivityTracker implements vscode.Disposable {
   private readonly throttler = new HeartbeatThrottler();
   private debounceTimer: NodeJS.Timeout | undefined;
   private pendingWrite = false;
-  private isDebugging = false;
-  private isCompiling = false;
   private readonly lines = new LineChanges();
   /**
    * What the last heartbeat was credited to. A webview tab (an AI chat panel
@@ -80,6 +78,11 @@ export class ActivityTracker implements vscode.Disposable {
     }
     const activity = () => this.onEvent(false);
     const write = () => this.onEvent(true);
+    const task = (event: { execution: vscode.TaskExecution }) => {
+      if (!event.execution.task.isBackground) {
+        activity();
+      }
+    };
     this.disposables.push(
       vscode.window.onDidChangeTextEditorSelection((event) => {
         if (event.kind === vscode.TextEditorSelectionChangeKind.Command) {
@@ -125,25 +128,11 @@ export class ActivityTracker implements vscode.Disposable {
       vscode.workspace.onDidCreateFiles(write),
       vscode.workspace.onDidRenameFiles(write),
       vscode.workspace.onDidDeleteFiles(write),
-      vscode.debug.onDidStartDebugSession(() => {
-        this.isDebugging = true;
-        activity();
-      }),
-      vscode.debug.onDidTerminateDebugSession(() => {
-        this.isDebugging = false;
-        activity();
-      }),
-      vscode.tasks.onDidStartTask((event) => {
-        if (event.execution.task.isBackground) {
-          return;
-        }
-        this.isCompiling = true;
-        activity();
-      }),
-      vscode.tasks.onDidEndTask(() => {
-        this.isCompiling = false;
-        activity();
-      }),
+      // The category is read off VS Code at flush time (categoryOf); these
+      // only get a change in it out without waiting for the next keystroke.
+      vscode.debug.onDidChangeActiveDebugSession(activity),
+      vscode.tasks.onDidStartTask(task),
+      vscode.tasks.onDidEndTask(task),
     );
   }
 
@@ -187,10 +176,7 @@ export class ActivityTracker implements vscode.Disposable {
     this.lastTarget = target;
     const entity = target.uri.fsPath;
 
-    const category = this.isDebugging ? 'debugging'
-      : this.isCompiling ? 'building'
-      : target.reviewing ? 'code reviewing'
-      : 'coding';
+    const category = categoryOf(target.reviewing);
     const now = Date.now();
     if (!this.throttler.shouldSend(entity, category, now, isWrite)) {
       return;
@@ -230,7 +216,7 @@ export class ActivityTracker implements vscode.Disposable {
       timeSeconds: Date.now() / 1000,
       ...projectOf(document.uri),
       language: languageName(document.languageId),
-      category: 'coding',
+      category: categoryOf(false),
       isWrite: false,
       lineNumber: 0,
       cursorPosition: 0,
@@ -357,10 +343,45 @@ function notebookTarget(editor: vscode.NotebookEditor | undefined): Target | und
 }
 
 /**
+ * What the time is going to, read off VS Code itself when the heartbeat goes
+ * out. Nothing is tracked here: a flag flipped by start and end events goes
+ * false when the first of two overlapping sessions ends, and never sees one
+ * that was already running when the extension started.
+ */
+function categoryOf(reviewing: boolean): string {
+  return isDebugging() ? 'debugging'
+    : isBuilding() ? 'building'
+    : reviewing ? 'code reviewing'
+    : 'coding';
+}
+
+/** A debugger is attached. "Run Without Debugging" starts a session too, with
+ * noDebug set: that is running the program, not debugging it. */
+function isDebugging(): boolean {
+  const session = vscode.debug.activeDebugSession;
+  return session !== undefined && !session.configuration.noDebug;
+}
+
+/**
+ * A task in the Build group is running (tasks.json "group": "build", or what
+ * a task provider files there). Not a background one even there: a
+ * `tsc --watch` sits in the Build group all day and would make the whole day
+ * building. Test and lint tasks are not building, and a build typed into the
+ * terminal is not seen at all — telling it from any other command would be
+ * guessing.
+ */
+function isBuilding(): boolean {
+  return vscode.tasks.taskExecutions.some(({ task }) =>
+    !task.isBackground && task.group?.id === vscode.TaskGroup.Build.id);
+}
+
+/**
  * Reading a change rather than making one: a diff editor (git, an agent's
  * proposed edit), a pull request document, or a webview whose
  * name says it is a diff (Codex opens its review as one). The tab is the
  * tell, not the document — the focused side of a git diff is the plain file.
+ * The three-way merge editor is not among them: its tab input is not in the
+ * stable API, so resolving a conflict reads as coding.
  */
 function isReviewing(tab: vscode.Tab | undefined, editor: vscode.TextEditor | undefined): boolean {
   const input = tab?.input;

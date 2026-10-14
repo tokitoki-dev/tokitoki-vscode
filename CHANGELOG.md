@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.11
+
+- Bundled CLI updated to v0.1.11: Claude Code and Codex **tool calls** —
+  built-in tools, MCP tools and the programs a shell command runs — and
+  **prompts** are recorded, so the dashboard shows which tools agents use
+  and how long each question took. Tool arguments and prompt text never
+  leave your machine. The first sync after updating reads existing
+  transcripts once more to pick up their history.
+- **Projects are named after their repository.** Heartbeats no longer send
+  the folder name: the CLI names the project from the file and the
+  workspace folder, the same way it names an AI agent's work, so editor
+  time and AI usage land on one project, and a worktree or a subfolder
+  counts toward its repository. A name pinned in `.tokitoki` still wins,
+  and **Set Project Name** proposes the name in effect. The branch is read
+  from the checkout itself.
+- Debugging and building are read from VS Code when a heartbeat goes out:
+  a debug session already running when the extension started counts, Run
+  Without Debugging no longer counts as debugging, and only tasks in the
+  Build group count as building — background watchers such as
+  `tsc --watch` do not.
+
 ## 0.1.10
 
 - Bundled CLI updated to v0.1.10: it keeps a rotating run log under

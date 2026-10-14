@@ -16,7 +16,7 @@ export function projectFilePath(folder: string): string {
 /**
  * The pinned project name, or '' when the file is absent, unreadable, or its
  * first line is blank. All three mean the same thing to the CLI: no override,
- * fall back to the folder name.
+ * it names the project itself (`tokitoki project` says how).
  */
 export async function readProjectName(folder: string): Promise<string> {
   return firstLine(await read(folder));

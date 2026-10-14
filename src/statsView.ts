@@ -119,16 +119,19 @@ export class StatsViewProvider implements vscode.WebviewViewProvider {
       }
 
       // Which project the panel reads: the selector wins, otherwise the folder
-      // open in this window — the name the CLI's heartbeats record, being the
-      // folder's pinned `.tokitoki` name when set and the folder name
-      // otherwise. `ALL_PROJECTS` asks for no sub-report at all. One CLI call
-      // returns the global report with that sub-report nested inside it.
-      const windowProject = await windowProjectName();
-      const active = this.selected ?? windowProject;
-      const projectName = active === ALL_PROJECTS ? undefined : active;
+      // open in this window — under the name the CLI files its heartbeats
+      // under (see windowProjectName). `ALL_PROJECTS` asks for no sub-report
+      // at all. One CLI call returns the global report with that sub-report
+      // nested inside it.
+      const cli = this.createCli();
+      let windowProject: string | undefined;
+      let projectName: string | undefined;
       let report: StatsReport;
       try {
-        report = await this.createCli().stats(STATS_DAYS, projectName);
+        windowProject = await windowProjectName(cli);
+        const active = this.selected ?? windowProject;
+        projectName = active === ALL_PROJECTS ? undefined : active;
+        report = await cli.stats(STATS_DAYS, projectName);
       } catch (error) {
         this.logger.debug(`Stats unavailable: ${error instanceof Error ? error.message : String(error)}`);
         // Old shared CLI without the stats command, or a broken install.
